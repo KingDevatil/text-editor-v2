@@ -34,6 +34,8 @@
             "dialog:allow-open",
             "dialog:allow-confirm",
             "dialog:allow-ask",
+            "clipboard-manager:allow-read-text",
+            "clipboard-manager:allow-write-text",
             "core:default",
             "core:window:allow-close",
             "core:window:allow-destroy",

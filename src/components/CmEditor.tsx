@@ -9,6 +9,7 @@ import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/lang
 import { getThemeExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
 import { perf } from '../utils/perf';
+import { isTauri } from '@tauri-apps/api/core';
 import type { Language } from '../types';
 import {
   getEditorState,
@@ -35,6 +36,34 @@ const fontSizeCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
 
 const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini']);
+
+/** Write text to clipboard — uses Tauri plugin in desktop, falls back to navigator API in browser. */
+async function writeClipboard(text: string): Promise<void> {
+  if (isTauri()) {
+    try {
+      const { writeText } = await import('@tauri-apps/plugin-clipboard-manager');
+      await writeText(text);
+    } catch {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
+  } else {
+    navigator.clipboard.writeText(text).catch(() => {});
+  }
+}
+
+/** Read text from clipboard — uses Tauri plugin in desktop, falls back to navigator API in browser. */
+async function readClipboard(): Promise<string> {
+  if (isTauri()) {
+    try {
+      const { readText } = await import('@tauri-apps/plugin-clipboard-manager');
+      return await readText();
+    } catch {
+      return navigator.clipboard.readText();
+    }
+  } else {
+    return navigator.clipboard.readText();
+  }
+}
 
 function buildBaseExtensions(
   lang: Language,
@@ -253,7 +282,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         disabled: !hasSelection,
         action: () => {
           const text = state.doc.sliceString(state.selection.main.from, state.selection.main.to);
-          navigator.clipboard.writeText(text).catch(() => {});
+          writeClipboard(text);
           view.dispatch({
             changes: { from: state.selection.main.from, to: state.selection.main.to, insert: '' },
           });
@@ -267,7 +296,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         disabled: !hasSelection,
         action: () => {
           const text = state.doc.sliceString(state.selection.main.from, state.selection.main.to);
-          navigator.clipboard.writeText(text).catch(() => {});
+          writeClipboard(text);
         },
       },
       {
@@ -276,7 +305,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         icon: <ClipboardPaste size={14} />,
         shortcut: 'Ctrl+V',
         action: () => {
-          navigator.clipboard.readText().then((text) => {
+          readClipboard().then((text) => {
             view.dispatch({
               changes: { from: state.selection.main.from, to: state.selection.main.to, insert: text },
               selection: { anchor: state.selection.main.from + text.length },
