@@ -24,21 +24,6 @@ input, textarea,
   -webkit-user-select: text;
 }
 
-/* CM6 drawSelection: ensure selection layer is above activeLine and visible */
-.cm-selectionLayer {
-  z-index: 2 !important;
-  pointer-events: none;
-}
-
-.cm-selectionBackground {
-  display: block !important;
-}
-
-/* Active line must be below selection layer */
-.cm-activeLine {
-  z-index: 1 !important;
-}
-
 /* Theme transitions: only on container-level elements, NOT all DOM nodes */
 .theme-transition {
   transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;

@@ -31,7 +31,9 @@ export const lightTheme: Extension = EditorView.theme(
       backgroundColor: '#f0f0f0',
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#add6ff',
+      backgroundColor: '#6aa8ff',
+      outline: '1px solid rgba(255,255,255,0.5)',
+      outlineOffset: '-1px',
     },
     '.cm-searchMatch': {
       backgroundColor: '#a8ac94',
@@ -76,7 +78,9 @@ export const darkTheme: Extension = EditorView.theme(
       backgroundColor: '#2a2d2e',
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#264f78',
+      backgroundColor: '#4a8fd9',
+      outline: '1px solid rgba(255,255,255,0.35)',
+      outlineOffset: '-1px',
     },
     '.cm-searchMatch': {
       backgroundColor: '#515c6a',
