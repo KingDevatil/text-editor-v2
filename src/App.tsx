@@ -28,6 +28,14 @@ function App() {
   const findReplaceVisible = useEditorStore((s) => s.findReplaceVisible);
   const unicodeHighlight = useEditorStore((s) => s.unicodeHighlight);
   const fontSize = useEditorStore((s) => s.fontSize);
+
+  // Refs for keyboard shortcuts — always point to latest callbacks
+  const handleNewFileRef = useRef<(() => void) | null>(null);
+  const handleOpenFileRef = useRef<(() => void) | null>(null);
+  const handleSaveFileRef = useRef<(() => void) | null>(null);
+  const handleFormatRef = useRef<(() => void) | null>(null);
+  const findReplaceVisibleRef = useRef(findReplaceVisible);
+  findReplaceVisibleRef.current = findReplaceVisible;
   const previewVisible = useEditorStore((s) => s.previewVisible);
   const splitMode = useEditorStore((s) => s.splitMode);
   const projectPath = useEditorStore((s) => s.projectPath);
@@ -106,43 +114,44 @@ function App() {
     };
   }, [openFile]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — refs guarantee we always call the latest callbacks
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
         switch (e.key.toLowerCase()) {
           case 'n':
             e.preventDefault();
-            handleNewFile();
+            handleNewFileRef.current?.();
             break;
           case 'o':
             e.preventDefault();
-            handleOpenFile();
+            handleOpenFileRef.current?.();
             break;
           case 's':
             e.preventDefault();
-            handleSaveFile();
+            handleSaveFileRef.current?.();
             break;
           case 'f':
             e.preventDefault();
-            setFindReplaceVisible(!findReplaceVisible);
+            setFindReplaceVisible(!findReplaceVisibleRef.current);
             break;
         }
       }
       // Format document shortcut
       if (e.shiftKey && e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        handleFormat();
+        handleFormatRef.current?.();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [findReplaceVisible, setFindReplaceVisible]);
+  }, [setFindReplaceVisible]);
 
   const handleNewFile = useCallback(() => {
     const group = activeTab?.group || 1;
     createTab('Untitled', undefined, undefined, group);
   }, [createTab, activeTab]);
+  handleNewFileRef.current = handleNewFile;
 
   const handleNewFileInGroup = useCallback((group: 1 | 2) => {
     createTab('Untitled', undefined, undefined, group);
@@ -165,6 +174,7 @@ function App() {
       fileInputRef.current?.click();
     }
   }, [openFile]);
+  handleOpenFileRef.current = handleOpenFile;
 
   const handleFileSelected = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -254,6 +264,7 @@ function App() {
       console.log('Save cancelled or failed', err);
     }
   }, [activeTab, markTabSaved, renameTab]);
+  handleSaveFileRef.current = handleSaveFile;
 
   const handleOpenFolder = useCallback(async () => {
     if (!isTauri()) return;
@@ -473,6 +484,7 @@ function App() {
       markTabDirty(activeTab.id, true);
     }
   }, [activeTab, markTabDirty]);
+  handleFormatRef.current = handleFormat;
 
   const group1Tab = tabs.find((t) => t.id === activeGroup1TabId);
   const canPreview = group1Tab?.language === 'markdown';
