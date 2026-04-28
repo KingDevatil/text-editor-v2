@@ -253,6 +253,8 @@ export async function loadLanguageExtensions(lang: Language): Promise<Extension[
 export function preloadCommonLanguages(): void {
   const common: Language[] = ['javascript', 'typescript', 'html', 'css', 'json', 'markdown'];
   for (const lang of common) {
-    loadLanguageExtensions(lang).catch(() => {});
+    loadLanguageExtensions(lang).catch((err) => {
+      console.error(`[Language] Failed to preload ${lang}:`, err);
+    });
   }
 }

@@ -124,7 +124,8 @@ export function useFileOpener() {
 
           if (isLarge) {
             const targetLang = getLanguageFromFileName(fileName);
-            if (targetLang !== 'plaintext') {
+            const shouldSwitchLang = targetLang !== 'plaintext' && !useEditorStore.getState().largeFileOptimize;
+            if (shouldSwitchLang) {
               runBackground(() => {
                 setTabLanguage(useEditorStore.getState().tabs.find((t) => t.filePath === filePath)?.id || '', targetLang);
               }, 200);

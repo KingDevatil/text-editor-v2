@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import type { EditorTab, Language, Encoding } from '../types';
 import { EXT_TO_LANGUAGE } from '../types';
+import { deleteEditorState } from './useEditorStatePool';
 
 let tabCounter = 0;
 
@@ -102,6 +103,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   },
 
   closeTab: (tabId) => {
+    deleteEditorState(tabId);
     set((state) => {
       const tab = state.tabs.find((t) => t.id === tabId);
       const closedGroup = tab?.group || 1;
@@ -148,6 +150,9 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
 
   closeTabs: (idsToClose) => {
     if (idsToClose.length === 0) return;
+    for (const id of idsToClose) {
+      deleteEditorState(id);
+    }
     set((state) => {
       const newTabs = state.tabs.filter((t) => !idsToClose.includes(t.id));
       const g1Tabs = newTabs.filter((t) => t.group === 1 || !t.group);
@@ -180,13 +185,18 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   },
 
   closeAllTabs: () => {
-    set({
-      tabs: [],
-      activeTabId: null,
-      activeGroup1TabId: null,
-      activeGroup2TabId: null,
-      splitMode: false,
-      previewVisible: false,
+    set((state) => {
+      for (const tab of state.tabs) {
+        deleteEditorState(tab.id);
+      }
+      return {
+        tabs: [],
+        activeTabId: null,
+        activeGroup1TabId: null,
+        activeGroup2TabId: null,
+        splitMode: false,
+        previewVisible: false,
+      };
     });
   },
 

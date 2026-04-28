@@ -1,64 +1,11 @@
-import { EditorState, type Extension } from '@codemirror/state';
-import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLineGutter, highlightActiveLine } from '@codemirror/view';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { getLanguageExtensionsSync } from '../utils/languageExtensions';
-import { getThemeExtension, type EditorTheme } from '../utils/themes';
-import type { Language } from '../types';
+import { EditorState } from '@codemirror/state';
+import { EditorView } from '@codemirror/view';
 
 interface StatePool {
   states: Map<string, EditorState>;
 }
 
 const pool: StatePool = { states: new Map() };
-
-function createBaseExtensions(
-  language: Language,
-  theme: EditorTheme,
-  fontSize: number,
-  readOnly: boolean
-): Extension[] {
-  const extensions: Extension[] = [
-    history(),
-    keymap.of([...defaultKeymap, ...historyKeymap]),
-    lineNumbers(),
-    drawSelection(),
-    highlightActiveLineGutter(),
-    highlightActiveLine(),
-    highlightSelectionMatches(),
-    keymap.of(searchKeymap),
-    getThemeExtension(theme),
-    EditorView.theme({
-      '.cm-content': { fontSize: `${fontSize}px` },
-    }),
-  ];
-
-  const langExts = getLanguageExtensionsSync(language);
-  extensions.push(...langExts);
-
-  if (readOnly) {
-    extensions.push(EditorView.editable.of(false));
-  }
-
-  return extensions;
-}
-
-export function createEditorState(
-  tabId: string,
-  content: string,
-  language: Language,
-  theme: EditorTheme,
-  fontSize: number,
-  readOnly = false
-): EditorState {
-  const extensions = createBaseExtensions(language, theme, fontSize, readOnly);
-  const state = EditorState.create({
-    doc: content,
-    extensions,
-  });
-  pool.states.set(tabId, state);
-  return state;
-}
 
 export function getEditorState(tabId: string): EditorState | undefined {
   return pool.states.get(tabId);

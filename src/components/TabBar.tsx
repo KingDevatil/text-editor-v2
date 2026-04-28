@@ -87,9 +87,10 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     }
     const tab = tabs.find((t) => t.id === tabId);
     if (tab?.isDirty) {
-      if (!window.confirm(`"${tab.title}" 有未保存的更改，确定要关闭吗？`)) {
-        return;
-      }
+      confirm(`"${tab.title}" 有未保存的更改，确定要关闭吗？`, { title: '未保存的更改' }).then((ok) => {
+        if (ok) onTabClose(tabId);
+      }).catch(() => onTabClose(tabId));
+      return;
     }
     onTabClose(tabId);
   }, [onTabClose, tabs]);
@@ -104,7 +105,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
       handleTabActivate(tabId, group);
-    }, 100);
+    }, 50);
   }, [handleTabActivate, handleTabDoubleClick]);
 
   useEffect(() => {

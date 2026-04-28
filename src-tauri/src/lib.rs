@@ -116,15 +116,15 @@ fn smart_detect_encoding(bytes: &[u8]) -> (String, String) {
         return (text, "UTF-8".to_string());
     }
 
-    // 3. Try GBK (Chinese Windows legacy) - use full bytes
-    if let Some(text) = try_decode(bytes, GBK) {
-        return (text, "GBK".to_string());
-    }
-
-    // 4. Try real GB18030 - use full bytes
+    // 3. Try GB18030 first (superset of GBK, avoids misidentifying GB18030 as GBK)
     let gb18030 = encoding_rs::GB18030;
     if let Some(text) = try_decode(bytes, gb18030) {
         return (text, "GB18030".to_string());
+    }
+
+    // 4. Try GBK (Chinese Windows legacy) - use full bytes
+    if let Some(text) = try_decode(bytes, GBK) {
+        return (text, "GBK".to_string());
     }
 
     // 5. Fallback to chardetng statistical detection (on a safely-truncated sample).
@@ -463,11 +463,12 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_single_instance::init(|app, argv, _cwd| {
-            let window = app.get_webview_window("main").unwrap();
-            // Restore window from minimized state before focusing,
-            // otherwise set_focus has no effect when the window is minimized.
-            let _ = window.unminimize();
-            let _ = window.set_focus();
+            if let Some(window) = app.get_webview_window("main") {
+                // Restore window from minimized state before focusing,
+                // otherwise set_focus has no effect when the window is minimized.
+                let _ = window.unminimize();
+                let _ = window.set_focus();
+            }
             
             // When app is already running and a new file is opened,
             // emit open-file event for each valid file path

@@ -34,9 +34,16 @@ class PerfMonitor {
   measure(name: string, startMark: string, endMark?: string, meta?: Record<string, unknown>): number | null {
     if (!this.enabled) return null;
     const start = this.marks.get(startMark);
+    if (start === undefined) {
+      console.warn(`[Perf] startMark "${startMark}" not found`);
+      return null;
+    }
     const end = endMark ? this.marks.get(endMark) : performance.now();
-    if (start === undefined || end === undefined) return null;
-    const duration = Math.round((end - start) * 100) / 100;
+    if (endMark && end === undefined) {
+      console.warn(`[Perf] endMark "${endMark}" not found`);
+      return null;
+    }
+    const duration = Math.round((end! - start) * 100) / 100;
     this.measures.push({ name, duration, timestamp: Date.now(), meta });
     return duration;
   }

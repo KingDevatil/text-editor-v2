@@ -34,6 +34,8 @@ const themeCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
 
+const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini']);
+
 function buildBaseExtensions(
   lang: Language,
   theme: EditorTheme,
@@ -85,7 +87,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
 
-  const canFormat = ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini'].includes(language);
+  const canFormat = FORMATTABLE_LANGUAGES.has(language);
 
   // Keep callback ref up to date
   useEffect(() => {
@@ -145,7 +147,9 @@ const CmEditor: React.FC<CmEditorProps> = ({
       viewRef.current.dispatch({
         effects: languageCompartment.reconfigure(exts),
       });
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error(`[CmEditor] Failed to load language ${language}:`, err);
+    });
 
     return () => {
       cancelled = true;
@@ -175,7 +179,9 @@ const CmEditor: React.FC<CmEditorProps> = ({
           effects: languageCompartment.reconfigure(exts),
         });
       }
-    }).catch(() => {});
+    }).catch((err) => {
+      console.error(`[CmEditor] Failed to load language ${language}:`, err);
+    });
   }, [language]);
 
   // Dynamic reconfiguration: theme
@@ -301,6 +307,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
     ];
   }, [language, canFormat]);
 
+  const menuItems = React.useMemo(() => buildMenuItems(), [buildMenuItems]);
+
   // Context menu handler
   const handleContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault();
@@ -326,7 +334,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={buildMenuItems()}
+          items={menuItems}
           onClose={() => setContextMenu(null)}
         />
       )}

@@ -410,7 +410,8 @@ function App() {
 
         try {
           const text = await file.text();
-          const existing = tabs.find((t) => t.title === fileName);
+          const currentTabs = useEditorStore.getState().tabs;
+          const existing = currentTabs.find((t) => t.title === fileName);
           if (existing) {
             setActiveTabId(existing.id);
             updateEditorContent(existing.id, text);
@@ -429,7 +430,7 @@ function App() {
       window.removeEventListener('dragover', handleDragOver);
       window.removeEventListener('drop', handleDrop);
     };
-  }, [tabs, setActiveTabId, createTab]);
+  }, [setActiveTabId, createTab]);
 
   const handleRegisterDefaultApp = useCallback(async () => {
     if (!isTauri()) return;

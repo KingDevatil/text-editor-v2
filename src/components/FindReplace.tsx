@@ -4,6 +4,11 @@ import { SearchCursor } from '@codemirror/search';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { getActiveView } from '../hooks/useEditorStatePool';
 
+/** Maximum characters to scan for match counting (prevents UI freeze on large files). */
+const MAX_SCAN_CHARS = 200_000;
+/** Debounce delay for match counting (ms). */
+const SCAN_DEBOUNCE_MS = 200;
+
 interface FindReplaceProps {
   visible: boolean;
   onClose: () => void;
@@ -27,7 +32,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
     }
   }, [visible]);
 
-  // Update match count whenever find text or case sensitivity changes
+  // Debounced + limited match counting to avoid freezing on large files
   useEffect(() => {
     if (!findText) {
       setMatchCount(0);
@@ -37,19 +42,38 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
     const view = activeTabId ? getActiveView(activeTabId) : undefined;
     if (!view) return;
 
-    const doc = view.state.doc;
-    let count = 0;
-    const cursor = new SearchCursor(doc, findText, 0, doc.length, caseSensitive);
-    while (!cursor.next().done) {
-      count++;
-    }
-    setMatchCount(count);
-    setCurrentMatch(count > 0 ? 1 : 0);
+    const timer = setTimeout(() => {
+      const doc = view.state.doc;
+      const scanTo = Math.min(doc.length, MAX_SCAN_CHARS);
+      let count = 0;
+      const cursor = new SearchCursor(doc, findText, 0, scanTo, caseSensitive);
+      while (!cursor.next().done) {
+        count++;
+      }
+      const capped = doc.length > MAX_SCAN_CHARS;
+      setMatchCount(capped ? -count : count); // negative = "count+" display
+      setCurrentMatch(count > 0 ? 1 : 0);
+    }, SCAN_DEBOUNCE_MS);
+
+    return () => clearTimeout(timer);
   }, [findText, caseSensitive, activeTabId]);
 
   const getView = useCallback(() => {
     return activeTabId ? getActiveView(activeTabId) : undefined;
   }, [activeTabId]);
+
+  /** Compute the 1-based index of a match position in the document. */
+  const getMatchIndex = useCallback(
+    (doc: typeof view.state.doc, pos: number) => {
+      let idx = 0;
+      const cursor = new SearchCursor(doc, findText, 0, doc.length, caseSensitive);
+      while (!cursor.next().done && cursor.value.from < pos) {
+        idx++;
+      }
+      return idx + 1;
+    },
+    [findText, caseSensitive]
+  );
 
   const findNext = useCallback(() => {
     const view = getView();
@@ -69,7 +93,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
         selection: { anchor: result.value.from, head: result.value.to },
         scrollIntoView: true,
       });
-      setCurrentMatch((prev) => (prev < matchCount ? prev + 1 : 1));
+      setCurrentMatch(getMatchIndex(state.doc, result.value.from));
     } else {
       // Wrap around to beginning
       const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, caseSensitive);
@@ -79,10 +103,10 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
           selection: { anchor: wrapResult.value.from, head: wrapResult.value.to },
           scrollIntoView: true,
         });
-        setCurrentMatch(1);
+        setCurrentMatch(getMatchIndex(state.doc, wrapResult.value.from));
       }
     }
-  }, [getView, findText, caseSensitive, matchCount]);
+  }, [getView, findText, caseSensitive, getMatchIndex]);
 
   const findPrevious = useCallback(() => {
     const view = getView();
@@ -103,7 +127,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
         selection: { anchor: lastMatch.from, head: lastMatch.to },
         scrollIntoView: true,
       });
-      setCurrentMatch((prev) => (prev > 1 ? prev - 1 : matchCount));
+      setCurrentMatch(getMatchIndex(state.doc, lastMatch.from));
     } else {
       // Wrap around to end
       const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, caseSensitive);
@@ -116,10 +140,10 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
           selection: { anchor: finalMatch.from, head: finalMatch.to },
           scrollIntoView: true,
         });
-        setCurrentMatch(matchCount);
+        setCurrentMatch(getMatchIndex(state.doc, finalMatch.from));
       }
     }
-  }, [getView, findText, caseSensitive, matchCount]);
+  }, [getView, findText, caseSensitive, getMatchIndex]);
 
   const handleReplace = useCallback(() => {
     const view = getView();
@@ -212,9 +236,9 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
               onKeyDown={handleKeyDown}
               className={`${inputClass} w-full border-gray-300 dark:border-gray-600`}
             />
-            {matchCount > 0 && (
+            {matchCount !== 0 && (
               <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 select-none">
-                {currentMatch}/{matchCount}
+                {currentMatch}/{Math.abs(matchCount)}{matchCount < 0 ? '+' : ''}
               </span>
             )}
           </div>
