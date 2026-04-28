@@ -1,5 +1,5 @@
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { FilePlus, FolderOpen, Save, Search, Braces, PanelLeft, Sun, Moon, WrapText, Space, BookOpen, Columns2 } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Search, Braces, PanelLeft, Sun, Moon, WrapText, Space, BookOpen, Columns2, GitCompare, X } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
@@ -11,6 +11,7 @@ import { getEditorContent, updateEditorContent, getActiveView } from './hooks/us
 import { formatDocument, goToDefinition } from './utils/cmCommands';
 import { perf } from './utils/perf';
 import type { Encoding } from './types';
+import type { EditorTheme } from './utils/themes';
 import Toolbar from './components/Toolbar';
 import TabBar from './components/TabBar';
 import FindReplace from './components/FindReplace';
@@ -18,6 +19,7 @@ import StatusBar from './components/StatusBar';
 import Sidebar from './components/Sidebar';
 import MarkdownPreview from './components/MarkdownPreview';
 import CmEditor from './components/CmEditor';
+import DiffEditor from './components/DiffEditor';
 import CommandPalette from './components/CommandPalette';
 
 function App() {
@@ -46,6 +48,9 @@ function App() {
   const showWhitespace = useEditorStore((s) => s.showWhitespace);
   const scrollPastEnd = useEditorStore((s) => s.scrollPastEnd);
   const minimapVisible = useEditorStore((s) => s.minimapVisible);
+  const diffMode = useEditorStore((s) => s.diffMode);
+  const diffLeftTabId = useEditorStore((s) => s.diffLeftTabId);
+  const diffRightTabId = useEditorStore((s) => s.diffRightTabId);
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId) || null);
 
   const setActiveTabId = useEditorStore((s) => s.setActiveTabId);
@@ -338,8 +343,9 @@ function App() {
 
   const handleToggleTheme = useCallback(() => {
     setTheme((prev) => {
-      if (prev === 'vs') return 'vs-dark';
-      return 'vs';
+      const themes: EditorTheme[] = ['vs', 'vs-dark', 'sepia', 'hc-black'];
+      const idx = themes.indexOf(prev);
+      return themes[(idx + 1) % themes.length];
     });
   }, [setTheme]);
 
@@ -376,7 +382,7 @@ function App() {
     [activeTab, setTabEncoding]
   );
 
-  const isDark = theme === 'vs-dark';
+  const isDark = theme === 'vs-dark' || theme === 'hc-black';
 
   // Handle file drop using Tauri native drag-drop events
   useEffect(() => {
@@ -524,6 +530,29 @@ function App() {
     setSplitMode(!splitMode);
   }, [splitMode, setSplitMode]);
 
+  const handleToggleDiff = useCallback(() => {
+    const state = useEditorStore.getState();
+    if (state.diffMode) {
+      // Exit diff mode
+      useEditorStore.getState().setDiffMode(false);
+      useEditorStore.getState().setDiffPair(null, null);
+    } else {
+      // Enter diff mode with current two tabs
+      const g1 = state.activeGroup1TabId;
+      const g2 = state.activeGroup2TabId;
+      if (g1 && g2) {
+        useEditorStore.getState().setDiffPair(g1, g2);
+        useEditorStore.getState().setDiffMode(true);
+      } else if (state.tabs.length >= 2) {
+        // Use first two tabs
+        useEditorStore.getState().setDiffPair(state.tabs[0].id, state.tabs[1].id);
+        useEditorStore.getState().setDiffMode(true);
+      } else {
+        console.warn('[Diff] 需要至少两个打开的文件才能对比');
+      }
+    }
+  }, []);
+
   const group1Tab = tabs.find((t) => t.id === activeGroup1TabId);
   const canPreview = group1Tab?.language === 'markdown';
   const canSplit = tabs.length >= 2;
@@ -536,15 +565,16 @@ function App() {
     { id: 'find', label: '查找替换', shortcut: 'Ctrl+F', icon: <Search size={16} />, action: () => setFindReplaceVisible(!findReplaceVisible) },
     { id: 'format', label: '格式化文档', shortcut: 'Shift+Alt+F', icon: <Braces size={16} />, action: handleFormat },
     { id: 'sidebar', label: sidebarVisible ? '隐藏侧边栏' : '显示侧边栏', icon: <PanelLeft size={16} />, action: () => setSidebarVisible(!sidebarVisible) },
-    { id: 'theme', label: `切换${isDark ? '亮色' : '暗色'}主题`, icon: isDark ? <Sun size={16} /> : <Moon size={16} />, action: handleToggleTheme },
+    { id: 'theme', label: `切换主题 (${theme})`, icon: isDark ? <Sun size={16} /> : <Moon size={16} />, action: handleToggleTheme },
     { id: 'wordwrap', label: wordWrap ? '关闭自动换行' : '开启自动换行', icon: <WrapText size={16} />, action: () => useEditorStore.getState().setWordWrap(!wordWrap) },
     { id: 'whitespace', label: showWhitespace ? '隐藏空白字符' : '显示空白字符', icon: <Space size={16} />, action: () => useEditorStore.getState().setShowWhitespace(!showWhitespace) },
     { id: 'preview', label: previewVisible ? '关闭 Markdown 预览' : '开启 Markdown 预览', icon: <BookOpen size={16} />, action: () => setPreviewVisible(!previewVisible) },
     { id: 'split', label: splitMode ? '关闭分屏' : '开启分屏', icon: <Columns2 size={16} />, action: handleToggleSplit },
-  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode]);
+    { id: 'diff', label: diffMode ? '退出对比' : '对比文件', icon: diffMode ? <X size={16} /> : <GitCompare size={16} />, action: handleToggleDiff },
+  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode, diffMode]);
 
   return (
-    <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`}>
+    <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`} data-theme={theme}>
       <input
         ref={fileInputRef}
         type="file"
@@ -616,7 +646,13 @@ function App() {
           />
 
           <div className="flex flex-1 overflow-hidden">
-            {group1Tab ? (
+            {diffMode && diffLeftTabId && diffRightTabId ? (
+              <DiffEditor
+                leftContent={getEditorContent(diffLeftTabId)}
+                rightContent={getEditorContent(diffRightTabId)}
+                theme={theme}
+              />
+            ) : group1Tab ? (
               <>
                 <div className={`h-full ${splitMode || (previewVisible && canPreview) ? 'w-1/2' : 'w-full'}`}>
                   <CmEditor

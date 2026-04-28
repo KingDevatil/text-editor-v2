@@ -3,7 +3,7 @@ import type { Extension } from '@codemirror/state';
 import { syntaxHighlighting } from '@codemirror/language';
 import { classHighlighter } from '@lezer/highlight';
 
-export type EditorTheme = 'vs' | 'vs-dark';
+export type EditorTheme = 'vs' | 'vs-dark' | 'sepia' | 'hc-black';
 
 /**
  * Syntax highlighting via CSS classes (tok-keyword, tok-string, etc.).
@@ -101,7 +101,85 @@ export const darkTheme: Extension = EditorView.theme(
   { dark: true }
 );
 
-// 高对比度主题已移除，仅保留亮色和暗色
+/**
+ * Sepia theme — warm, eye-friendly tones for long reading sessions.
+ */
+export const sepiaTheme: Extension = EditorView.theme(
+  {
+    '&': {
+      backgroundColor: '#f4ecd8',
+      color: '#5b4636',
+    },
+    '.cm-content': {
+      caretColor: '#5b4636',
+      fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+      fontSize: '14px',
+      lineHeight: '1.5',
+    },
+    '.cm-gutters': {
+      backgroundColor: '#eaddc5',
+      color: '#8c7b6c',
+      borderRight: '1px solid #d7c9a9',
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: '#dccba8',
+      color: '#5b4636',
+    },
+    '.cm-activeLine': {
+      backgroundColor: '#ebe0c8',
+    },
+    '.cm-selectionBackground': {
+      backgroundColor: 'rgba(160, 120, 80, 0.25)',
+    },
+    '.cm-searchMatch': {
+      backgroundColor: '#c4b896',
+    },
+    '.cm-searchMatch.cm-searchMatch-selected': {
+      backgroundColor: '#d4a017',
+    },
+  },
+  { dark: false }
+);
+
+/**
+ * High-contrast dark theme — for accessibility.
+ */
+export const hcDarkTheme: Extension = EditorView.theme(
+  {
+    '&': {
+      backgroundColor: '#000000',
+      color: '#ffffff',
+    },
+    '.cm-content': {
+      caretColor: '#ffffff',
+      fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
+      fontSize: '14px',
+      lineHeight: '1.5',
+    },
+    '.cm-gutters': {
+      backgroundColor: '#000000',
+      color: '#ffffff',
+      borderRight: '1px solid #ffffff',
+    },
+    '.cm-activeLineGutter': {
+      backgroundColor: '#1a1a1a',
+      color: '#ffffff',
+    },
+    '.cm-activeLine': {
+      backgroundColor: '#1a1a1a',
+    },
+    '.cm-selectionBackground': {
+      backgroundColor: '#0080ff',
+    },
+    '.cm-searchMatch': {
+      backgroundColor: '#ff00ff',
+    },
+    '.cm-searchMatch.cm-searchMatch-selected': {
+      backgroundColor: '#ffff00',
+    },
+  },
+  { dark: true }
+);
 
 export function getThemeExtension(theme: EditorTheme): Extension {
   switch (theme) {
@@ -109,6 +187,10 @@ export function getThemeExtension(theme: EditorTheme): Extension {
       return lightTheme;
     case 'vs-dark':
       return darkTheme;
+    case 'sepia':
+      return sepiaTheme;
+    case 'hc-black':
+      return hcDarkTheme;
     default:
       return darkTheme;
   }

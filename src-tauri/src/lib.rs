@@ -52,6 +52,7 @@ fn encoding_name_for_frontend(encoding: &'static Encoding) -> String {
     match encoding.name() {
         "UTF-8" => "UTF-8".to_string(),
         "GBK" => "GBK".to_string(),
+        "GB18030" => "GB18030".to_string(),
         "Big5" => "BIG5".to_string(),
         "Shift_JIS" => "Shift-JIS".to_string(),
         "EUC-JP" => "EUC-JP".to_string(),
@@ -351,6 +352,46 @@ fn get_pending_files(state: tauri::State<AppState>) -> Vec<String> {
     result
 }
 
+/// Reveal a file or folder in the system's file manager
+#[tauri::command]
+fn reveal_in_folder(path: String) -> Result<(), String> {
+    let path_obj = std::path::Path::new(&path);
+    let target = if path_obj.is_file() {
+        path_obj.parent().unwrap_or(path_obj)
+    } else {
+        path_obj
+    };
+    
+    #[cfg(target_os = "windows")]
+    {
+        use std::process::Command;
+        Command::new("explorer")
+            .args(["/select,", &path])
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        use std::process::Command;
+        Command::new("open")
+            .args(["-R", &path])
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        use std::process::Command;
+        Command::new("xdg-open")
+            .arg(target)
+            .spawn()
+            .map_err(|e| format!("无法打开文件夹: {}", e))?;
+    }
+    
+    Ok(())
+}
+
 #[tauri::command]
 fn register_as_default_app() -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
@@ -501,6 +542,7 @@ pub fn run() {
             list_directory,
             write_file_with_encoding,
             get_pending_files,
+            reveal_in_folder,
             register_as_default_app,
         ])
         .build(tauri::generate_context!())

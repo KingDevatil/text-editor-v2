@@ -1,5 +1,5 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces } from 'lucide-react';
+import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, WrapText, Space, GitCompare, X, FileMinus, Crosshair } from 'lucide-react';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt } from '@codemirror/view';
 import { EditorState, Compartment, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@codemirror/commands';
@@ -13,6 +13,7 @@ import { getAutocompleteExtension } from '../utils/autocomplete';
 import { indentGuides } from '../utils/indentGuides';
 import { hoverInfo } from '../utils/hover';
 import { bracketColorization } from '../utils/bracketColorization';
+import { signatureHelp } from '../utils/signatureHelp';
 import { perf } from '../utils/perf';
 import { isTauri } from '@tauri-apps/api/core';
 import type { Language } from '../types';
@@ -23,6 +24,8 @@ import {
 } from '../hooks/useEditorStatePool';
 import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 import Minimap from './Minimap';
+import { useEditorStore } from '../hooks/useEditorStore';
+import { goToDefinition } from '../utils/cmCommands';
 
 interface CmEditorProps {
   tabId: string;
@@ -128,6 +131,7 @@ function buildBaseExtensions(
   exts.push(...indentGuides);
   exts.push(hoverInfo);
   exts.push(bracketColorization);
+  exts.push(signatureHelp());
 
   return exts;
 }
@@ -337,16 +341,20 @@ const CmEditor: React.FC<CmEditorProps> = ({
     const canUndo = undo({ state, dispatch: () => {} });
     const canRedo = redo({ state, dispatch: () => {} });
 
-    return [
+    // Access global store for tab management and toggles
+    const store = useEditorStore.getState();
+    const allTabs = store.tabs;
+    const otherTabs = allTabs.filter((t) => t.id !== tabId);
+    const isDiffMode = store.diffMode;
+
+    const items: ContextMenuItem[] = [
       {
         id: 'undo',
         label: '撤销',
         icon: <Undo size={14} />,
         shortcut: 'Ctrl+Z',
         disabled: !canUndo,
-        action: () => {
-          undo(view);
-        },
+        action: () => undo(view),
       },
       {
         id: 'redo',
@@ -354,9 +362,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         icon: <Redo size={14} />,
         shortcut: 'Ctrl+Y',
         disabled: !canRedo,
-        action: () => {
-          redo(view);
-        },
+        action: () => redo(view),
       },
       { id: 'divider-1', label: '', icon: null, divider: true, action: () => {} },
       {
@@ -403,23 +409,88 @@ const CmEditor: React.FC<CmEditorProps> = ({
         label: '全选',
         icon: <AlignLeft size={14} />,
         shortcut: 'Ctrl+A',
-        action: () => {
-          selectAll(view);
-        },
+        action: () => selectAll(view),
       },
       { id: 'divider-2', label: '', icon: null, divider: true, action: () => {} },
+      {
+        id: 'goto-def',
+        label: '转到定义',
+        icon: <Crosshair size={14} />,
+        shortcut: 'F12',
+        action: () => {
+          const ok = goToDefinition(view);
+          if (!ok) console.warn('[GoToDef] 无法找到定义（当前仅支持同文件内跳转）');
+        },
+      },
+      { id: 'divider-3', label: '', icon: null, divider: true, action: () => {} },
       {
         id: 'format',
         label: '格式化',
         icon: <Braces size={14} />,
         shortcut: 'Shift+Alt+F',
         disabled: !canFormat,
-        action: () => {
-          formatDocument(view, language);
-        },
+        action: () => formatDocument(view, language),
       },
     ];
-  }, [language, canFormat]);
+
+    // Tab management section
+    if (otherTabs.length > 0) {
+      items.push(
+        { id: 'divider-tab', label: '', icon: null, divider: true, action: () => {} },
+        {
+          id: 'close-tab',
+          label: '关闭标签页',
+          icon: <X size={14} />,
+          action: () => store.closeTab(tabId),
+        }
+      );
+      if (otherTabs.length > 1) {
+        items.push({
+          id: 'close-other-tabs',
+          label: '关闭其他标签页',
+          icon: <FileMinus size={14} />,
+          action: () => store.closeTabs(otherTabs.map((t) => t.id)),
+        });
+      }
+      // Diff option
+      if (!isDiffMode && otherTabs.length >= 1) {
+        items.push({
+          id: 'diff-with',
+          label: `与 "${otherTabs[0].title}" 对比`,
+          icon: <GitCompare size={14} />,
+          action: () => {
+            store.setDiffPair(tabId, otherTabs[0].id);
+            store.setDiffMode(true);
+          },
+        });
+      }
+    }
+
+    // View toggles
+    items.push(
+      { id: 'divider-view', label: '', icon: null, divider: true, action: () => {} },
+      {
+        id: 'toggle-minimap',
+        label: store.minimapVisible ? '隐藏缩略图' : '显示缩略图',
+        icon: <Map size={14} />,
+        action: () => store.setMinimapVisible(!store.minimapVisible),
+      },
+      {
+        id: 'toggle-wordwrap',
+        label: store.wordWrap ? '关闭自动换行' : '开启自动换行',
+        icon: <WrapText size={14} />,
+        action: () => store.setWordWrap(!store.wordWrap),
+      },
+      {
+        id: 'toggle-whitespace',
+        label: store.showWhitespace ? '隐藏空白字符' : '显示空白字符',
+        icon: <Space size={14} />,
+        action: () => store.setShowWhitespace(!store.showWhitespace),
+      }
+    );
+
+    return items;
+  }, [language, canFormat, tabId]);
 
   // Context menu handler — compute items at click time to ensure viewRef is ready
   const handleContextMenu = useCallback((e: MouseEvent) => {

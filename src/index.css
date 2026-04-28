@@ -225,6 +225,42 @@ input[type="range"]::-webkit-slider-thumb {
 .dark .tok-local         { color: #9cdcfe; }
 .dark .tok-function      { color: #dcdcaa; }
 
+/* Sepia theme — warm, readable palette */
+[data-theme="sepia"] .tok-keyword       { color: #8b4513; }
+[data-theme="sepia"] .tok-string        { color: #a0522d; }
+[data-theme="sepia"] .tok-number        { color: #556b2f; }
+[data-theme="sepia"] .tok-comment       { color: #6b8e23; font-style: italic; }
+[data-theme="sepia"] .tok-variableName  { color: #4a3728; }
+[data-theme="sepia"] .tok-typeName      { color: #2f4f4f; }
+[data-theme="sepia"] .tok-propertyName  { color: #4a3728; }
+[data-theme="sepia"] .tok-operator      { color: #5b4636; }
+[data-theme="sepia"] .tok-punctuation   { color: #5b4636; }
+[data-theme="sepia"] .tok-meta          { color: #8b4513; }
+[data-theme="sepia"] .tok-atom          { color: #8b4513; }
+[data-theme="sepia"] .tok-bool          { color: #8b4513; }
+[data-theme="sepia"] .tok-labelName     { color: #4a3728; }
+[data-theme="sepia"] .tok-definition    { color: #8b6914; }
+[data-theme="sepia"] .tok-local         { color: #4a3728; }
+[data-theme="sepia"] .tok-function      { color: #8b6914; }
+
+/* High-contrast dark theme */
+[data-theme="hc-black"] .tok-keyword       { color: #ffff00; }
+[data-theme="hc-black"] .tok-string        { color: #00ff00; }
+[data-theme="hc-black"] .tok-number        { color: #00ffff; }
+[data-theme="hc-black"] .tok-comment       { color: #00ff00; font-style: italic; }
+[data-theme="hc-black"] .tok-variableName  { color: #ffffff; }
+[data-theme="hc-black"] .tok-typeName      { color: #00ffff; }
+[data-theme="hc-black"] .tok-propertyName  { color: #ffffff; }
+[data-theme="hc-black"] .tok-operator      { color: #ffffff; }
+[data-theme="hc-black"] .tok-punctuation   { color: #ffffff; }
+[data-theme="hc-black"] .tok-meta          { color: #ffff00; }
+[data-theme="hc-black"] .tok-atom          { color: #ffff00; }
+[data-theme="hc-black"] .tok-bool          { color: #ffff00; }
+[data-theme="hc-black"] .tok-labelName     { color: #ffffff; }
+[data-theme="hc-black"] .tok-definition    { color: #ffff00; }
+[data-theme="hc-black"] .tok-local         { color: #ffffff; }
+[data-theme="hc-black"] .tok-function      { color: #ffff00; }
+
 /* ── Rounded Selection ─────────────────────────────────────────── */
 .cm-selectionBackground {
   border-radius: 3px;
@@ -273,3 +309,65 @@ input[type="range"]::-webkit-slider-thumb {
 .dark .cm-bracket-depth-1 { color: #da70d6; }
 .dark .cm-bracket-depth-2 { color: #4fc1ff; }
 .dark .cm-bracket-depth-3 { color: #4ec9b0; }
+
+/* ── Signature Help Tooltip ───────────────────────────────────── */
+.cm-signature-tooltip {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  color: #24292f;
+  max-width: 500px;
+  font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  pointer-events: none;
+}
+
+.dark .cm-signature-tooltip {
+  background: #1e1e1e;
+  border-color: rgba(255,255,255,0.1);
+  color: #c9d1d9;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.cm-signature-tooltip .sig-name {
+  font-weight: 600;
+  color: #795e26;
+  margin-bottom: 2px;
+}
+
+.dark .cm-signature-tooltip .sig-name {
+  color: #dcdcaa;
+}
+
+.cm-signature-tooltip .sig-signature {
+  color: #333;
+}
+
+.dark .cm-signature-tooltip .sig-signature {
+  color: #d4d4d4;
+}
+
+.cm-signature-tooltip .sig-param {
+  color: #001080;
+}
+
+.dark .cm-signature-tooltip .sig-param {
+  color: #9cdcfe;
+}
+
+.cm-signature-tooltip .sig-doc {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(128,128,128,0.15);
+  color: #6e7681;
+  font-size: 11px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+}
+
+.dark .cm-signature-tooltip .sig-doc {
+  color: #808080;
+  border-color: rgba(255,255,255,0.08);
+}

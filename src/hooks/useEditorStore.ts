@@ -19,7 +19,7 @@ interface EditorState {
   activeTabId: string | null;
   activeGroup1TabId: string | null;
   activeGroup2TabId: string | null;
-  theme: 'vs' | 'vs-dark';
+  theme: 'vs' | 'vs-dark' | 'sepia' | 'hc-black';
   sidebarVisible: boolean;
   findReplaceVisible: boolean;
   unicodeHighlight: boolean;
@@ -45,7 +45,7 @@ interface EditorActions {
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
   setActiveGroup2TabId: (id: string | null) => void;
-  setTheme: (theme: 'vs' | 'vs-dark' | ((prev: 'vs' | 'vs-dark') => 'vs' | 'vs-dark')) => void;
+  setTheme: (theme: 'vs' | 'vs-dark' | 'sepia' | 'hc-black' | ((prev: 'vs' | 'vs-dark' | 'sepia' | 'hc-black') => 'vs' | 'vs-dark' | 'sepia' | 'hc-black')) => void;
   setSidebarVisible: (visible: boolean) => void;
   setFindReplaceVisible: (visible: boolean) => void;
   setUnicodeHighlight: (highlight: boolean) => void;
@@ -61,6 +61,14 @@ interface EditorActions {
   setScrollPastEnd: (scroll: boolean) => void;
   minimapVisible: boolean;
   setMinimapVisible: (visible: boolean) => void;
+  diffMode: boolean;
+  diffLeftTabId: string | null;
+  diffRightTabId: string | null;
+  setDiffMode: (mode: boolean) => void;
+  setDiffPair: (left: string | null, right: string | null) => void;
+  customKeybindings: Record<string, string>;
+  setCustomKeybinding: (command: string, key: string) => void;
+  resetKeybindings: () => void;
 }
 
 const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
@@ -81,6 +89,10 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   showWhitespace: false,
   scrollPastEnd: true,
   minimapVisible: true,
+  diffMode: false,
+  diffLeftTabId: null,
+  diffRightTabId: null,
+  customKeybindings: {},
 
   createTab: (title = 'Untitled', language, filePath, group = 1, encoding = 'UTF-8', initialContent = '') => {
     const lang = language || getLanguageFromFileName(title);
@@ -297,6 +309,13 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   setShowWhitespace: (show) => set({ showWhitespace: show }),
   setScrollPastEnd: (scroll) => set({ scrollPastEnd: scroll }),
   setMinimapVisible: (visible) => set({ minimapVisible: visible }),
+  setDiffMode: (mode) => set({ diffMode: mode }),
+  setDiffPair: (left, right) => set({ diffLeftTabId: left, diffRightTabId: right }),
+  setCustomKeybinding: (command, key) =>
+    set((state) => ({
+      customKeybindings: { ...state.customKeybindings, [command]: key },
+    })),
+  resetKeybindings: () => set({ customKeybindings: {} }),
 }));
 
 export { useEditorStore };
