@@ -28,10 +28,10 @@ export const lightTheme: Extension = EditorView.theme(
       color: '#333333',
     },
     '.cm-activeLine': {
-      backgroundColor: '#f0f0f0',
+      backgroundColor: '#f5f8fa',
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#0078d4',
+      backgroundColor: '#2684ff',
     },
     '.cm-searchMatch': {
       backgroundColor: '#a8ac94',
@@ -73,7 +73,7 @@ export const darkTheme: Extension = EditorView.theme(
       color: '#c6c6c6',
     },
     '.cm-activeLine': {
-      backgroundColor: '#2a2d2e',
+      backgroundColor: '#222426',
     },
     '.cm-selectionBackground': {
       backgroundColor: '#4a9eff',

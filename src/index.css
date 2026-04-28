@@ -24,14 +24,11 @@ input, textarea,
   -webkit-user-select: text;
 }
 
-/* CM6 selection layer: above content but semi-transparent so text remains visible */
+/* CM6 selection layer — default z-index (below text).
+   We rely on browser native ::selection for the actual text highlight,
+   and drawSelection() provides a decorative background layer below text. */
 .cm-selectionLayer {
-  z-index: 2 !important;
   pointer-events: none;
-}
-
-.cm-selectionBackground {
-  opacity: 0.55;
 }
 
 /* Theme transitions: only on container-level elements, NOT all DOM nodes */
@@ -91,10 +88,14 @@ input, textarea, select {
   background-color: rgba(96, 165, 250, 0.35);
 }
 
-/* CM6 uses its own selection layer (not ::selection), disable native highlight
-   to avoid double-rendering or conflicts with drawSelection() */
+/* Browser native ::selection — drawn directly on glyphs by the browser,
+   always above text, never blocked by activeLine or z-index. */
 .cm-content ::selection {
-  background-color: transparent !important;
+  background-color: #2684ff;
+}
+
+.dark .cm-content ::selection {
+  background-color: #4a9eff;
 }
 
 /* Range input styling */
