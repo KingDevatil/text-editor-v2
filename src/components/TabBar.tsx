@@ -128,8 +128,10 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     draggedTabIdRef.current = tabId;
     try {
       if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.effectAllowed = 'all';
         e.dataTransfer.setData('text/plain', tabId);
+        // Some WebView engines only recognise the legacy 'Text' type
+        e.dataTransfer.setData('Text', tabId);
       }
     } catch {
       // ignore dataTransfer errors in some WebView environments

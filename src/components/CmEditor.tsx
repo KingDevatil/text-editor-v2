@@ -220,6 +220,11 @@ const CmEditor: React.FC<CmEditorProps> = ({
     viewRef.current = view;
     setActiveView(tabId, view);
 
+    // Ensure wordWrap is applied even when reusing a pooled state with stale config
+    view.dispatch({
+      effects: wordWrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
+    });
+
     // Workaround: if CM6 default double-click word selection fails to show
     // visual highlight (but selection is logically set), force a re-draw.
     let dblClickCleanup: (() => void) | undefined;
