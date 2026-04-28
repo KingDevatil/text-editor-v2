@@ -173,6 +173,27 @@ const CmEditor: React.FC<CmEditorProps> = ({
     viewRef.current = view;
     setActiveView(tabId, view);
 
+    // Workaround: if CM6 default double-click word selection is blocked by
+    // CSS user-select or other factors, handle it explicitly.
+    let dblClickCleanup: (() => void) | undefined;
+    const cmContent = view.dom.querySelector('.cm-content') as HTMLElement | null;
+    if (cmContent) {
+      const handleDblClick = (e: MouseEvent) => {
+        const v = viewRef.current;
+        if (!v) return;
+        const pos = v.posAtCoords({ x: e.clientX, y: e.clientY });
+        if (pos === null) return;
+        const word = v.state.wordAt(pos);
+        if (word && word.from !== word.to) {
+          v.dispatch({ selection: { anchor: word.from, head: word.to } });
+          e.preventDefault();
+          e.stopPropagation();
+        }
+      };
+      cmContent.addEventListener('dblclick', handleDblClick);
+      dblClickCleanup = () => cmContent.removeEventListener('dblclick', handleDblClick);
+    }
+
     // Async load heavy language pack and apply when ready
     loadLanguageExtensions(language).then((exts) => {
       if (cancelled || !viewRef.current) return;
@@ -185,6 +206,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
     return () => {
       cancelled = true;
+      dblClickCleanup?.();
       if (view) {
         setEditorState(tabId, view.state);
         setActiveView(tabId, null);

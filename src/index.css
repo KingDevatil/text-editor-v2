@@ -17,9 +17,9 @@ body {
   -webkit-user-select: none;
 }
 
-/* Allow text selection only in editor, preview, and native inputs */
+/* Allow text selection in native inputs and CM6 editor */
 input, textarea,
-.cm-content, .cm-line {
+.cm-editor, .cm-editor * {
   user-select: text;
   -webkit-user-select: text;
 }
