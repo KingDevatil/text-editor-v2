@@ -19,7 +19,7 @@ interface EditorState {
   activeTabId: string | null;
   activeGroup1TabId: string | null;
   activeGroup2TabId: string | null;
-  theme: 'vs' | 'vs-dark' | 'hc-black';
+  theme: 'vs' | 'vs-dark';
   sidebarVisible: boolean;
   findReplaceVisible: boolean;
   unicodeHighlight: boolean;
@@ -45,7 +45,7 @@ interface EditorActions {
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
   setActiveGroup2TabId: (id: string | null) => void;
-  setTheme: (theme: 'vs' | 'vs-dark' | 'hc-black' | ((prev: 'vs' | 'vs-dark' | 'hc-black') => 'vs' | 'vs-dark' | 'hc-black')) => void;
+  setTheme: (theme: 'vs' | 'vs-dark' | ((prev: 'vs' | 'vs-dark') => 'vs' | 'vs-dark')) => void;
   setSidebarVisible: (visible: boolean) => void;
   setFindReplaceVisible: (visible: boolean) => void;
   setUnicodeHighlight: (highlight: boolean) => void;

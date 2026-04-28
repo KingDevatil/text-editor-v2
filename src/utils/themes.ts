@@ -1,7 +1,7 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 
-export type EditorTheme = 'vs' | 'vs-dark' | 'hc-black';
+export type EditorTheme = 'vs' | 'vs-dark';
 
 /**
  * Light theme ("vs") — white background, dark text.
@@ -93,53 +93,7 @@ export const darkTheme: Extension = EditorView.theme(
   { dark: true }
 );
 
-/**
- * High Contrast theme ("hc-black") — black background, pure white text.
- */
-export const hcTheme: Extension = EditorView.theme(
-  {
-    '&': {
-      backgroundColor: '#000000',
-      color: '#ffffff',
-    },
-    '.cm-content': {
-      caretColor: '#ffffff',
-      fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace',
-      fontSize: '14px',
-      lineHeight: '1.5',
-    },
-    '.cm-gutters': {
-      backgroundColor: '#000000',
-      color: '#ffffff',
-      borderRight: '1px solid #ffffff',
-    },
-    '.cm-activeLineGutter': {
-      backgroundColor: '#1a1a1a',
-      color: '#ffffff',
-    },
-    '.cm-activeLine': {
-      backgroundColor: '#1a1a1a',
-    },
-    '.cm-selectionBackground': {
-      backgroundColor: '#ffffff',
-      color: '#000000',
-    },
-    '.cm-searchMatch': {
-      backgroundColor: '#ffff00',
-      color: '#000000',
-    },
-    '.cm-searchMatch.cm-searchMatch-selected': {
-      backgroundColor: '#ff0000',
-      color: '#ffffff',
-    },
-    // Log severity colors (hc)
-    '.cm-log-error': { color: '#ff0000', fontWeight: 'bold' },
-    '.cm-log-warn': { color: '#ffff00', fontWeight: 'bold' },
-    '.cm-log-info': { color: '#00ffff', fontWeight: 'bold' },
-    '.cm-log-debug': { color: '#c0c0c0' },
-  },
-  { dark: true }
-);
+// 高对比度主题已移除，仅保留亮色和暗色
 
 export function getThemeExtension(theme: EditorTheme): Extension {
   switch (theme) {
@@ -147,8 +101,6 @@ export function getThemeExtension(theme: EditorTheme): Extension {
       return lightTheme;
     case 'vs-dark':
       return darkTheme;
-    case 'hc-black':
-      return hcTheme;
     default:
       return darkTheme;
   }

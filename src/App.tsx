@@ -314,7 +314,6 @@ function App() {
   const handleToggleTheme = useCallback(() => {
     setTheme((prev) => {
       if (prev === 'vs') return 'vs-dark';
-      if (prev === 'vs-dark') return 'hc-black';
       return 'vs';
     });
   }, [setTheme]);
@@ -352,7 +351,7 @@ function App() {
     [activeTab, setTabEncoding]
   );
 
-  const isDark = theme === 'vs-dark' || theme === 'hc-black';
+  const isDark = theme === 'vs-dark';
 
   // Handle file drop using Tauri native drag-drop events
   useEffect(() => {

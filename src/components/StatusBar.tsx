@@ -118,7 +118,7 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEn
     };
   }, [activeTab?.id]);
 
-  const isDark = theme === 'vs-dark' || theme === 'hc-black';
+  const isDark = theme === 'vs-dark';
 
   const [encOpen, setEncOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);

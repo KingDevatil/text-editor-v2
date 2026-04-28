@@ -35,7 +35,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     return marked.parse(deferredContent, { async: false }) as string;
   }, [deferredContent]);
 
-  const isDark = theme === 'vs-dark' || theme === 'hc-black';
+  const isDark = theme === 'vs-dark';
 
   return (
     <div

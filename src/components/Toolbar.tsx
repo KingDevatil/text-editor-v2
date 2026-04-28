@@ -8,7 +8,7 @@ import {
   Search,
   Sun,
   Moon,
-  Contrast,
+  
   PanelLeft,
   Braces,
   BookOpen,
@@ -62,14 +62,12 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
 
   // Show icon of the NEXT theme that clicking will switch to
   const nextThemeIcon = (() => {
-    if (theme === 'vs') return <Moon size={16} />;           // next: dark
-    if (theme === 'vs-dark') return <Contrast size={16} />;  // next: high contrast
-    return <Sun size={16} />;                                 // next: light (hc-black)
+    if (theme === 'vs') return <Moon size={16} />;   // next: dark
+    return <Sun size={16} />;                         // next: light
   })();
 
   const nextThemeLabel = (() => {
     if (theme === 'vs') return '切换暗色主题';
-    if (theme === 'vs-dark') return '切换高对比主题';
     return '切换亮色主题';
   })();
 
