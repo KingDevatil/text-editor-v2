@@ -1,10 +1,12 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces } from 'lucide-react';
 import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLineGutter, highlightActiveLine } from '@codemirror/view';
 import { EditorState, Compartment } from '@codemirror/state';
-import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
+import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { getLanguageExtensions } from '../utils/languageExtensions';
 import { getThemeExtension, type EditorTheme } from '../utils/themes';
+import { formatDocument } from '../utils/cmCommands';
 import type { Language } from '../types';
 import {
   createEditorState,
@@ -12,6 +14,7 @@ import {
   setEditorState,
   setActiveView,
 } from '../hooks/useEditorStatePool';
+import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 
 interface CmEditorProps {
   tabId: string;
@@ -65,6 +68,10 @@ const CmEditor: React.FC<CmEditorProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
+
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const canFormat = ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini'].includes(language);
 
   // Keep callback ref up to date
   useEffect(() => {
@@ -161,12 +168,130 @@ const CmEditor: React.FC<CmEditorProps> = ({
     });
   }, [readOnly]);
 
+  // Build context menu items based on current editor state
+  const buildMenuItems = useCallback((): ContextMenuItem[] => {
+    const view = viewRef.current;
+    if (!view) return [];
+
+    const { state } = view;
+    const hasSelection = state.selection.main.from !== state.selection.main.to;
+    const canUndo = undo({ state, dispatch: () => {} });
+    const canRedo = redo({ state, dispatch: () => {} });
+
+    return [
+      {
+        id: 'undo',
+        label: '撤销',
+        icon: <Undo size={14} />,
+        shortcut: 'Ctrl+Z',
+        disabled: !canUndo,
+        action: () => {
+          undo(view);
+        },
+      },
+      {
+        id: 'redo',
+        label: '恢复',
+        icon: <Redo size={14} />,
+        shortcut: 'Ctrl+Y',
+        disabled: !canRedo,
+        action: () => {
+          redo(view);
+        },
+      },
+      { id: 'divider-1', label: '', icon: null, divider: true, action: () => {} },
+      {
+        id: 'cut',
+        label: '剪切',
+        icon: <Scissors size={14} />,
+        shortcut: 'Ctrl+X',
+        disabled: !hasSelection,
+        action: () => {
+          const text = state.doc.sliceString(state.selection.main.from, state.selection.main.to);
+          navigator.clipboard.writeText(text).catch(() => {});
+          view.dispatch({
+            changes: { from: state.selection.main.from, to: state.selection.main.to, insert: '' },
+          });
+        },
+      },
+      {
+        id: 'copy',
+        label: '复制',
+        icon: <Copy size={14} />,
+        shortcut: 'Ctrl+C',
+        disabled: !hasSelection,
+        action: () => {
+          const text = state.doc.sliceString(state.selection.main.from, state.selection.main.to);
+          navigator.clipboard.writeText(text).catch(() => {});
+        },
+      },
+      {
+        id: 'paste',
+        label: '粘贴',
+        icon: <ClipboardPaste size={14} />,
+        shortcut: 'Ctrl+V',
+        action: () => {
+          navigator.clipboard.readText().then((text) => {
+            view.dispatch({
+              changes: { from: state.selection.main.from, to: state.selection.main.to, insert: text },
+              selection: { anchor: state.selection.main.from + text.length },
+            });
+          }).catch(() => {});
+        },
+      },
+      {
+        id: 'select-all',
+        label: '全选',
+        icon: <AlignLeft size={14} />,
+        shortcut: 'Ctrl+A',
+        action: () => {
+          selectAll(view);
+        },
+      },
+      { id: 'divider-2', label: '', icon: null, divider: true, action: () => {} },
+      {
+        id: 'format',
+        label: '格式化',
+        icon: <Braces size={14} />,
+        shortcut: 'Shift+Alt+F',
+        disabled: !canFormat,
+        action: () => {
+          formatDocument(view, language);
+        },
+      },
+    ];
+  }, [language, canFormat]);
+
+  // Context menu handler
+  const handleContextMenu = useCallback((e: MouseEvent) => {
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  }, []);
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    container.addEventListener('contextmenu', handleContextMenu);
+    return () => {
+      container.removeEventListener('contextmenu', handleContextMenu);
+    };
+  }, [handleContextMenu]);
+
   return (
     <div
       ref={containerRef}
       className="w-full h-full overflow-hidden"
       style={{ fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace' }}
-    />
+    >
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={buildMenuItems()}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </div>
   );
 };
 

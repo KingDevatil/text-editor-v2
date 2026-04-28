@@ -6,7 +6,8 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { open, confirm } from '@tauri-apps/plugin-dialog';
 import { useEditorStore } from './hooks/useEditorStore';
 import { useFileOpener } from './hooks/useFileOpener';
-import { getEditorContent, updateEditorContent } from './hooks/useEditorStatePool';
+import { getEditorContent, updateEditorContent, getActiveView } from './hooks/useEditorStatePool';
+import { formatDocument } from './utils/cmCommands';
 import type { Encoding } from './types';
 import Toolbar from './components/Toolbar';
 import TabBar from './components/TabBar';
@@ -127,10 +128,10 @@ function App() {
             break;
         }
       }
-      // Phase 3: integrate CM6 format command
+      // Format document shortcut
       if (e.shiftKey && e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
-        // handleFormat(); // TODO: Phase 3
+        handleFormat();
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -436,6 +437,16 @@ function App() {
     ? ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini'].includes(activeTab.language)
     : false;
 
+  const handleFormat = useCallback(() => {
+    if (!activeTab) return;
+    const view = getActiveView(activeTab.id);
+    if (!view) return;
+    const ok = formatDocument(view, activeTab.language);
+    if (ok) {
+      markTabDirty(activeTab.id, true);
+    }
+  }, [activeTab, markTabDirty]);
+
   const group1Tab = tabs.find((t) => t.id === activeGroup1TabId);
   const canPreview = group1Tab?.language === 'markdown';
   const canSplit = tabs.length >= 2;
@@ -462,7 +473,7 @@ function App() {
         onToggleFindReplace={() => setFindReplaceVisible(!findReplaceVisible)}
         onToggleTheme={handleToggleTheme}
         onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
-        onFormat={() => { /* TODO: Phase 3 */ }}
+        onFormat={handleFormat}
         onTogglePreview={() => setPreviewVisible(!previewVisible)}
         onToggleSplit={handleToggleSplit}
         canFormat={canFormat}
