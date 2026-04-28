@@ -1,4 +1,5 @@
-import React, { useRef, useCallback, useEffect } from 'react';
+import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
+import { FilePlus, FolderOpen, Save, Search, Braces, PanelLeft, Sun, Moon, WrapText, Space, BookOpen, Columns2 } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
@@ -7,7 +8,7 @@ import { open, confirm } from '@tauri-apps/plugin-dialog';
 import { useEditorStore } from './hooks/useEditorStore';
 import { useFileOpener } from './hooks/useFileOpener';
 import { getEditorContent, updateEditorContent, getActiveView } from './hooks/useEditorStatePool';
-import { formatDocument } from './utils/cmCommands';
+import { formatDocument, goToDefinition } from './utils/cmCommands';
 import { perf } from './utils/perf';
 import type { Encoding } from './types';
 import Toolbar from './components/Toolbar';
@@ -17,6 +18,7 @@ import StatusBar from './components/StatusBar';
 import Sidebar from './components/Sidebar';
 import MarkdownPreview from './components/MarkdownPreview';
 import CmEditor from './components/CmEditor';
+import CommandPalette from './components/CommandPalette';
 
 function App() {
   const tabs = useEditorStore((s) => s.tabs);
@@ -40,6 +42,10 @@ function App() {
   const splitMode = useEditorStore((s) => s.splitMode);
   const projectPath = useEditorStore((s) => s.projectPath);
   const largeFileOptimize = useEditorStore((s) => s.largeFileOptimize);
+  const wordWrap = useEditorStore((s) => s.wordWrap);
+  const showWhitespace = useEditorStore((s) => s.showWhitespace);
+  const scrollPastEnd = useEditorStore((s) => s.scrollPastEnd);
+  const minimapVisible = useEditorStore((s) => s.minimapVisible);
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId) || null);
 
   const setActiveTabId = useEditorStore((s) => s.setActiveTabId);
@@ -54,6 +60,7 @@ function App() {
   const setSplitMode = useEditorStore((s) => s.setSplitMode);
   const setProjectPath = useEditorStore((s) => s.setProjectPath);
   const setLargeFileOptimize = useEditorStore((s) => s.setLargeFileOptimize);
+  const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
   const setTabEncoding = useEditorStore((s) => s.setTabEncoding);
   const setTabLanguage = useEditorStore((s) => s.setTabLanguage);
   const createTab = useEditorStore((s) => s.createTab);
@@ -141,6 +148,24 @@ function App() {
       if (e.shiftKey && e.altKey && e.key.toLowerCase() === 'f') {
         e.preventDefault();
         handleFormatRef.current?.();
+      }
+      // Command palette shortcut
+      if (e.key === 'F1') {
+        e.preventDefault();
+        setCommandPaletteOpen((v) => !v);
+      }
+      // Go to definition shortcut
+      if (e.key === 'F12') {
+        e.preventDefault();
+        if (activeTab) {
+          const view = getActiveView(activeTab.id);
+          if (view) {
+            const ok = goToDefinition(view);
+            if (!ok) {
+              alert('无法找到定义（当前仅支持同文件内跳转）');
+            }
+          }
+        }
       }
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -476,29 +501,47 @@ function App() {
 
   const handleFormat = useCallback(() => {
     if (!activeTab) {
-      console.log('[handleFormat] no activeTab');
+      alert('没有打开的文件');
       return;
     }
     const view = getActiveView(activeTab.id);
     if (!view) {
-      console.log('[handleFormat] no view for tab', activeTab.id);
+      console.error('[handleFormat] no view for tab', activeTab.id);
+      alert('无法获取编辑器实例，请尝试切换标签页后重试');
       return;
     }
     const ok = formatDocument(view, activeTab.language);
     console.log('[handleFormat] result:', ok, 'language:', activeTab.language);
     if (ok) {
       markTabDirty(activeTab.id, true);
+    } else {
+      alert(`格式化失败：${activeTab.language === 'json' ? 'JSON 格式不正确（检查是否有语法错误）' : '暂不支持该语言的格式化'}`);
     }
   }, [activeTab, markTabDirty]);
   handleFormatRef.current = handleFormat;
+
+  const handleToggleSplit = useCallback(() => {
+    setSplitMode(!splitMode);
+  }, [splitMode, setSplitMode]);
 
   const group1Tab = tabs.find((t) => t.id === activeGroup1TabId);
   const canPreview = group1Tab?.language === 'markdown';
   const canSplit = tabs.length >= 2;
 
-  const handleToggleSplit = useCallback(() => {
-    setSplitMode(!splitMode);
-  }, [splitMode, setSplitMode]);
+  // Command palette items
+  const commands = useMemo(() => [
+    { id: 'new', label: '新建文件', shortcut: 'Ctrl+N', icon: <FilePlus size={16} />, action: handleNewFile },
+    { id: 'open', label: '打开文件', shortcut: 'Ctrl+O', icon: <FolderOpen size={16} />, action: handleOpenFile },
+    { id: 'save', label: '保存文件', shortcut: 'Ctrl+S', icon: <Save size={16} />, action: handleSaveFile },
+    { id: 'find', label: '查找替换', shortcut: 'Ctrl+F', icon: <Search size={16} />, action: () => setFindReplaceVisible(!findReplaceVisible) },
+    { id: 'format', label: '格式化文档', shortcut: 'Shift+Alt+F', icon: <Braces size={16} />, action: handleFormat },
+    { id: 'sidebar', label: sidebarVisible ? '隐藏侧边栏' : '显示侧边栏', icon: <PanelLeft size={16} />, action: () => setSidebarVisible(!sidebarVisible) },
+    { id: 'theme', label: `切换${isDark ? '亮色' : '暗色'}主题`, icon: isDark ? <Sun size={16} /> : <Moon size={16} />, action: handleToggleTheme },
+    { id: 'wordwrap', label: wordWrap ? '关闭自动换行' : '开启自动换行', icon: <WrapText size={16} />, action: () => useEditorStore.getState().setWordWrap(!wordWrap) },
+    { id: 'whitespace', label: showWhitespace ? '隐藏空白字符' : '显示空白字符', icon: <Space size={16} />, action: () => useEditorStore.getState().setShowWhitespace(!showWhitespace) },
+    { id: 'preview', label: previewVisible ? '关闭 Markdown 预览' : '开启 Markdown 预览', icon: <BookOpen size={16} />, action: () => setPreviewVisible(!previewVisible) },
+    { id: 'split', label: splitMode ? '关闭分屏' : '开启分屏', icon: <Columns2 size={16} />, action: handleToggleSplit },
+  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode]);
 
   return (
     <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`}>
@@ -566,6 +609,11 @@ function App() {
             visible={findReplaceVisible}
             onClose={() => setFindReplaceVisible(false)}
           />
+          <CommandPalette
+            open={commandPaletteOpen}
+            onClose={() => setCommandPaletteOpen(false)}
+            commands={commands}
+          />
 
           <div className="flex flex-1 overflow-hidden">
             {group1Tab ? (
@@ -579,6 +627,10 @@ function App() {
                     fontSize={fontSize}
                     initialContent={group1Tab.initialContent || ''}
                     largeFileOptimize={largeFileOptimize}
+                    wordWrap={wordWrap}
+                    showWhitespace={showWhitespace}
+                    scrollPastEnd={scrollPastEnd}
+                    minimapVisible={minimapVisible}
                   />
                 </div>
                 {splitMode && (
@@ -594,6 +646,10 @@ function App() {
                           fontSize={fontSize}
                           initialContent={tabs.find((t) => t.id === activeGroup2TabId)?.initialContent || ''}
                           largeFileOptimize={largeFileOptimize}
+                          wordWrap={wordWrap}
+                          showWhitespace={showWhitespace}
+                          scrollPastEnd={scrollPastEnd}
+                          minimapVisible={minimapVisible}
                         />
                       ) : (
                         <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-600 bg-white dark:bg-gray-900">
@@ -630,6 +686,21 @@ function App() {
               if (activeTab) {
                 setTabLanguage(activeTab.id, lang);
               }
+            }}
+            wordWrap={wordWrap}
+            onToggleWordWrap={() => {
+              const next = !wordWrap;
+              useEditorStore.getState().setWordWrap(next);
+            }}
+            showWhitespace={showWhitespace}
+            onToggleShowWhitespace={() => {
+              const next = !showWhitespace;
+              useEditorStore.getState().setShowWhitespace(next);
+            }}
+            minimapVisible={minimapVisible}
+            onToggleMinimap={() => {
+              const next = !minimapVisible;
+              useEditorStore.getState().setMinimapVisible(next);
             }}
           />
         </div>

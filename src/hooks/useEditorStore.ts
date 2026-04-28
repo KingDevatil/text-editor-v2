@@ -53,6 +53,14 @@ interface EditorActions {
   setPreviewVisible: (visible: boolean) => void;
   setProjectPath: (path: string | null) => void;
   setLargeFileOptimize: (optimize: boolean) => void;
+  wordWrap: boolean;
+  setWordWrap: (wrap: boolean) => void;
+  showWhitespace: boolean;
+  setShowWhitespace: (show: boolean) => void;
+  scrollPastEnd: boolean;
+  setScrollPastEnd: (scroll: boolean) => void;
+  minimapVisible: boolean;
+  setMinimapVisible: (visible: boolean) => void;
 }
 
 const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
@@ -69,6 +77,10 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   splitMode: false,
   projectPath: null,
   largeFileOptimize: false,
+  wordWrap: false,
+  showWhitespace: false,
+  scrollPastEnd: true,
+  minimapVisible: true,
 
   createTab: (title = 'Untitled', language, filePath, group = 1, encoding = 'UTF-8', initialContent = '') => {
     const lang = language || getLanguageFromFileName(title);
@@ -281,6 +293,10 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   setPreviewVisible: (visible) => set({ previewVisible: visible }),
   setProjectPath: (path) => set({ projectPath: path }),
   setLargeFileOptimize: (optimize) => set({ largeFileOptimize: optimize }),
+  setWordWrap: (wrap) => set({ wordWrap: wrap }),
+  setShowWhitespace: (show) => set({ showWhitespace: show }),
+  setScrollPastEnd: (scroll) => set({ scrollPastEnd: scroll }),
+  setMinimapVisible: (visible) => set({ minimapVisible: visible }),
 }));
 
 export { useEditorStore };

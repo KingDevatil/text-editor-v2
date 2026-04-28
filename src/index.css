@@ -79,23 +79,22 @@ input, textarea, select {
   background: #6b7280;
 }
 
-/* Native selection color — for non-CM6 elements */
+/* Native selection color — light gray, works across all syntax highlight colors */
 ::selection {
-  background-color: rgba(59, 130, 246, 0.25);
+  background-color: rgba(128, 128, 128, 0.25);
 }
 
 .dark ::selection {
-  background-color: rgba(96, 165, 250, 0.35);
+  background-color: rgba(160, 160, 160, 0.3);
 }
 
-/* Browser native ::selection — drawn directly on glyphs by the browser,
-   always above text, never blocked by activeLine or z-index. */
+/* Browser native ::selection in CM6 editor */
 .cm-content ::selection {
-  background-color: #2684ff;
+  background-color: rgba(128, 128, 128, 0.25);
 }
 
 .dark .cm-content ::selection {
-  background-color: #4a9eff;
+  background-color: rgba(160, 160, 160, 0.3);
 }
 
 /* Range input styling */
@@ -225,3 +224,52 @@ input[type="range"]::-webkit-slider-thumb {
 .dark .tok-definition    { color: #dcdcaa; }
 .dark .tok-local         { color: #9cdcfe; }
 .dark .tok-function      { color: #dcdcaa; }
+
+/* ── Rounded Selection ─────────────────────────────────────────── */
+.cm-selectionBackground {
+  border-radius: 3px;
+}
+
+/* ── Hover Tooltip ────────────────────────────────────────────── */
+.cm-hover-tooltip {
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.1);
+  border-radius: 6px;
+  padding: 6px 10px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  color: #24292f;
+  max-width: 400px;
+  font-family: ui-sans-serif, system-ui, sans-serif;
+  font-size: 12px;
+  line-height: 1.4;
+  pointer-events: none;
+}
+
+.dark .cm-hover-tooltip {
+  background: #1e1e1e;
+  border-color: rgba(255,255,255,0.1);
+  color: #c9d1d9;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+/* ── Bracket Pair Colorization ────────────────────────────────── */
+.cm-matchingBracket {
+  background-color: rgba(128, 128, 128, 0.12) !important;
+  border-radius: 2px;
+}
+
+.cm-nonmatchingBracket {
+  background-color: rgba(255, 0, 0, 0.15) !important;
+  border-radius: 2px;
+}
+
+/* Depth-based bracket colors (applied via JS ViewPlugin) */
+.cm-bracket-depth-0 { color: #ffd700; }
+.cm-bracket-depth-1 { color: #da70d6; }
+.cm-bracket-depth-2 { color: #179fff; }
+.cm-bracket-depth-3 { color: #4ec9b0; }
+
+.dark .cm-bracket-depth-0 { color: #ffd700; }
+.dark .cm-bracket-depth-1 { color: #da70d6; }
+.dark .cm-bracket-depth-2 { color: #4fc1ff; }
+.dark .cm-bracket-depth-3 { color: #4ec9b0; }

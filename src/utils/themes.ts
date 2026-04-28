@@ -39,7 +39,7 @@ export const lightTheme: Extension = EditorView.theme(
       backgroundColor: '#f5f8fa',
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#2684ff',
+      backgroundColor: 'rgba(128, 128, 128, 0.25)',
     },
     '.cm-searchMatch': {
       backgroundColor: '#a8ac94',
@@ -84,7 +84,7 @@ export const darkTheme: Extension = EditorView.theme(
       backgroundColor: '#222426',
     },
     '.cm-selectionBackground': {
-      backgroundColor: '#4a9eff',
+      backgroundColor: 'rgba(160, 160, 160, 0.3)',
     },
     '.cm-searchMatch': {
       backgroundColor: '#515c6a',

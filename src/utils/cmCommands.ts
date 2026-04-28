@@ -2,6 +2,51 @@ import { EditorView } from '@codemirror/view';
 import { EditorSelection } from '@codemirror/state';
 
 /**
+ * Go to definition (simplified): find the first occurrence of the word
+ * under cursor and jump to it. If already at the first occurrence,
+ * cycles to the next one.
+ */
+export function goToDefinition(view: EditorView): boolean {
+  const pos = view.state.selection.main.head;
+  const word = view.state.wordAt(pos);
+  if (!word || word.from === word.to) return false;
+
+  const target = view.state.doc.sliceString(word.from, word.to);
+  if (!target || target.length < 2) return false;
+
+  // Search all occurrences
+  const text = view.state.doc.toString();
+  const occurrences: number[] = [];
+  let idx = text.indexOf(target);
+  while (idx !== -1) {
+    // Ensure whole-word match by checking boundaries
+    const before = idx === 0 || !/[a-zA-Z0-9_]/.test(text[idx - 1]);
+    const after = idx + target.length >= text.length || !/[a-zA-Z0-9_]/.test(text[idx + target.length]);
+    if (before && after) {
+      occurrences.push(idx);
+    }
+    idx = text.indexOf(target, idx + 1);
+  }
+
+  if (occurrences.length <= 1) return false;
+
+  // Find current occurrence index
+  let currentIdx = occurrences.findIndex((o) => o === word.from);
+  if (currentIdx === -1) currentIdx = 0;
+
+  // Jump to next occurrence (cycle)
+  const nextIdx = (currentIdx + 1) % occurrences.length;
+  const nextPos = occurrences[nextIdx];
+
+  view.dispatch({
+    selection: { anchor: nextPos, head: nextPos + target.length },
+    effects: EditorView.scrollIntoView(nextPos, { y: 'center' }),
+  });
+
+  return true;
+}
+
+/**
  * Format JSON content in the active editor view.
  * If text is selected, format only the selection.
  */
@@ -22,7 +67,9 @@ export function formatJSON(view: EditorView): boolean {
   const text = state.doc.sliceString(from, to);
 
   try {
-    const parsed = JSON.parse(text);
+    // Strip trailing commas before parsing (common in user-edited JSON)
+    const cleaned = text.replace(/,\s*([}\]])/g, '$1');
+    const parsed = JSON.parse(cleaned);
     const formatted = JSON.stringify(parsed, null, 2);
 
     view.dispatch({
@@ -30,8 +77,8 @@ export function formatJSON(view: EditorView): boolean {
       selection: EditorSelection.cursor(from + formatted.length),
     });
     return true;
-  } catch {
-    // Invalid JSON — don't modify
+  } catch (err) {
+    console.error('[formatJSON] Failed to parse JSON:', err);
     return false;
   }
 }

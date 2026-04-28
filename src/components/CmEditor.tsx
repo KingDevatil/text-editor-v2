@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces } from 'lucide-react';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt } from '@codemirror/view';
 import { EditorState, Compartment, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
@@ -8,6 +8,11 @@ import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { getThemeExtension, syntaxHighlightExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
+import { getLinterExtension } from '../utils/lint';
+import { getAutocompleteExtension } from '../utils/autocomplete';
+import { indentGuides } from '../utils/indentGuides';
+import { hoverInfo } from '../utils/hover';
+import { bracketColorization } from '../utils/bracketColorization';
 import { perf } from '../utils/perf';
 import { isTauri } from '@tauri-apps/api/core';
 import type { Language } from '../types';
@@ -17,6 +22,7 @@ import {
   setActiveView,
 } from '../hooks/useEditorStatePool';
 import ContextMenu, { type ContextMenuItem } from './ContextMenu';
+import Minimap from './Minimap';
 
 interface CmEditorProps {
   tabId: string;
@@ -27,6 +33,10 @@ interface CmEditorProps {
   readOnly?: boolean;
   initialContent?: string;
   largeFileOptimize?: boolean;
+  wordWrap?: boolean;
+  showWhitespace?: boolean;
+  scrollPastEnd?: boolean;
+  minimapVisible?: boolean;
 }
 
 // Compartments allow dynamic reconfiguration without recreating the state.
@@ -34,6 +44,8 @@ const languageCompartment = new Compartment();
 const themeCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
+const lintCompartment = new Compartment();
+const autocompleteCompartment = new Compartment();
 
 const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql']);
 
@@ -70,7 +82,10 @@ function buildBaseExtensions(
   theme: EditorTheme,
   fontSize: number,
   readOnly: boolean,
-  largeFileOptimize: boolean
+  largeFileOptimize: boolean,
+  wordWrap: boolean,
+  showWhitespace: boolean,
+  enableScrollPastEnd: boolean
 ): Extension[] {
   const exts: Extension[] = [
     history(),
@@ -97,6 +112,22 @@ function buildBaseExtensions(
     );
   }
 
+  if (wordWrap) {
+    exts.push(EditorView.lineWrapping);
+  }
+  if (showWhitespace) {
+    exts.push(highlightWhitespace(), highlightTrailingWhitespace());
+  }
+  if (enableScrollPastEnd) {
+    exts.push(scrollPastEndExt());
+  }
+
+  exts.push(lintCompartment.of(getLinterExtension(lang) || []));
+  exts.push(autocompleteCompartment.of(getAutocompleteExtension(lang) || []));
+  exts.push(...indentGuides);
+  exts.push(hoverInfo);
+  exts.push(bracketColorization);
+
   return exts;
 }
 
@@ -109,6 +140,10 @@ const CmEditor: React.FC<CmEditorProps> = ({
   readOnly = false,
   initialContent = '',
   largeFileOptimize = false,
+  wordWrap = false,
+  showWhitespace = false,
+  scrollPastEnd: enableScrollPastEnd = true,
+  minimapVisible = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -145,7 +180,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize),
+          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd),
           EditorView.updateListener.of((update) => {
             // Always save state to pool so that effects (language/theme changes)
             // are persisted, not just doc changes.
@@ -233,7 +268,11 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
     // Apply lightweight extension immediately (clears old highlighting for heavy langs)
     view.dispatch({
-      effects: languageCompartment.reconfigure(getLanguageExtensionsSync(language)),
+      effects: [
+        languageCompartment.reconfigure(getLanguageExtensionsSync(language)),
+        lintCompartment.reconfigure(getLinterExtension(language) || []),
+        autocompleteCompartment.reconfigure(getAutocompleteExtension(language) || []),
+      ],
     });
     setEditorState(tabId, view.state);
 
@@ -397,19 +436,22 @@ const CmEditor: React.FC<CmEditorProps> = ({
   }, [handleContextMenu]);
 
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-hidden"
-      style={{ fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", monospace' }}
-    >
-      {contextMenu && (
-        <ContextMenu
-          x={contextMenu.x}
-          y={contextMenu.y}
-          items={contextMenu.items}
-          onClose={() => setContextMenu(null)}
-        />
-      )}
+    <div className="flex w-full h-full overflow-hidden">
+      <div
+        ref={containerRef}
+        className="flex-1 h-full overflow-hidden"
+        style={{ fontFamily: '"JetBrains Mono", "Fira Code", "Consolas", "Microsoft YaHei", "PingFang SC", "Noto Sans SC", monospace' }}
+      >
+        {contextMenu && (
+          <ContextMenu
+            x={contextMenu.x}
+            y={contextMenu.y}
+            items={contextMenu.items}
+            onClose={() => setContextMenu(null)}
+          />
+        )}
+      </div>
+      {minimapVisible && <Minimap viewRef={viewRef} theme={theme} />}
     </div>
   );
 };

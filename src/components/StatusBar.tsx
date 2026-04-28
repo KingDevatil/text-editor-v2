@@ -8,6 +8,12 @@ interface StatusBarProps {
   theme: string;
   onEncodingChange?: (encoding: Encoding) => void;
   onLanguageChange?: (language: string) => void;
+  wordWrap?: boolean;
+  onToggleWordWrap?: () => void;
+  showWhitespace?: boolean;
+  onToggleShowWhitespace?: () => void;
+  minimapVisible?: boolean;
+  onToggleMinimap?: () => void;
 }
 
 const ENCODINGS: Encoding[] = [
@@ -71,7 +77,11 @@ function countWords(text: string): number {
   return count;
 }
 
-const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEncodingChange, onLanguageChange }) => {
+const StatusBar: React.FC<StatusBarProps> = React.memo(({
+  activeTab, theme, onEncodingChange, onLanguageChange,
+  wordWrap, onToggleWordWrap, showWhitespace, onToggleShowWhitespace,
+  minimapVisible, onToggleMinimap,
+}) => {
   const [wordCount, setWordCount] = useState(0);
   const [calculating, setCalculating] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -192,6 +202,43 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEn
             <span className="tabular-nums">行 {quickStats.lineCount}</span>
             <span className="tabular-nums">字符 {quickStats.charCount}</span>
             <span className="tabular-nums">字数 {calculating ? '...' : wordCount.toLocaleString()}</span>
+          </>
+        )}
+        {activeTab && (
+          <>
+            <button
+              onClick={onToggleWordWrap}
+              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
+                wordWrap
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+              }`}
+              title="自动换行"
+            >
+              换行
+            </button>
+            <button
+              onClick={onToggleShowWhitespace}
+              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
+                showWhitespace
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+              }`}
+              title="显示空白字符"
+            >
+              空白
+            </button>
+            <button
+              onClick={onToggleMinimap}
+              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
+                minimapVisible
+                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
+              }`}
+              title="代码缩略图"
+            >
+              缩略图
+            </button>
           </>
         )}
         <div className="relative" ref={encRef}>
