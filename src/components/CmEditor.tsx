@@ -173,8 +173,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
     viewRef.current = view;
     setActiveView(tabId, view);
 
-    // Workaround: if CM6 default double-click word selection is blocked by
-    // CSS user-select or other factors, handle it explicitly.
+    // Workaround: if CM6 default double-click word selection fails to show
+    // visual highlight (but selection is logically set), force a re-draw.
     let dblClickCleanup: (() => void) | undefined;
     const cmContent = view.dom.querySelector('.cm-content') as HTMLElement | null;
     if (cmContent) {
@@ -185,9 +185,13 @@ const CmEditor: React.FC<CmEditorProps> = ({
         if (pos === null) return;
         const word = v.state.wordAt(pos);
         if (word && word.from !== word.to) {
-          v.dispatch({ selection: { anchor: word.from, head: word.to } });
-          e.preventDefault();
-          e.stopPropagation();
+          // Only dispatch if the current selection doesn't already match the word.
+          // This avoids conflicting with CM6's built-in dblclick handler.
+          const sel = v.state.selection.main;
+          if (sel.from !== word.from || sel.to !== word.to) {
+            v.dispatch({ selection: { anchor: word.from, head: word.to } });
+          }
+          // Do NOT stopPropagation — let CM6 handle the rest (highlighting, etc.)
         }
       };
       cmContent.addEventListener('dblclick', handleDblClick);

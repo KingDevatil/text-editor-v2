@@ -17,11 +17,26 @@ body {
   -webkit-user-select: none;
 }
 
-/* Allow text selection in native inputs and CM6 editor */
+/* Allow text selection in native inputs and CM6 editor content */
 input, textarea,
-.cm-editor, .cm-editor * {
+.cm-content, .cm-line, .cm-line * {
   user-select: text;
   -webkit-user-select: text;
+}
+
+/* CM6 drawSelection: ensure selection layer is above activeLine and visible */
+.cm-selectionLayer {
+  z-index: 2 !important;
+  pointer-events: none;
+}
+
+.cm-selectionBackground {
+  display: block !important;
+}
+
+/* Active line must be below selection layer */
+.cm-activeLine {
+  z-index: 1 !important;
 }
 
 /* Theme transitions: only on container-level elements, NOT all DOM nodes */
@@ -72,13 +87,19 @@ input, textarea, select {
   background: #6b7280;
 }
 
-/* Selection color */
+/* Native selection color — for non-CM6 elements */
 ::selection {
   background-color: rgba(59, 130, 246, 0.25);
 }
 
 .dark ::selection {
   background-color: rgba(96, 165, 250, 0.35);
+}
+
+/* CM6 uses its own selection layer (not ::selection), disable native highlight
+   to avoid double-rendering or conflicts with drawSelection() */
+.cm-content ::selection {
+  background-color: transparent !important;
 }
 
 /* Range input styling */
