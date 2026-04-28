@@ -4,6 +4,7 @@ import type { Encoding, Language } from '../types';
 import { EXT_TO_LANGUAGE } from '../types';
 import { useEditorStore } from './useEditorStore';
 import { updateEditorContent } from './useEditorStatePool';
+import { perf } from '../utils/perf';
 
 const LARGE_FILE_THRESHOLD = 500 * 1024; // 500KB
 const PROGRESSIVE_THRESHOLD = 2 * 1024 * 1024; // 2MB
@@ -51,6 +52,8 @@ export function useFileOpener() {
     async (filePath: string, options?: { text?: string; encoding?: string; fromDrop?: boolean }) => {
       if (!isTauri() && !options?.text) return;
 
+      const openStart = performance.now();
+
       try {
         // Fast path: content already provided (e.g. from drag-drop)
         if (options?.text !== undefined) {
@@ -68,6 +71,7 @@ export function useFileOpener() {
             const lang = isLarge ? 'plaintext' : getLanguageFromFileName(fileName);
             createTab(fileName, lang, filePath, 1, detectedEncoding as Encoding, text);
           }
+          perf.recordFileOpen(text.length, performance.now() - openStart);
           return;
         }
 
@@ -96,6 +100,7 @@ export function useFileOpener() {
             meta.encoding as Encoding,
             meta.first_chunk
           );
+          perf.recordFileOpen(meta.file_size, performance.now() - openStart);
 
           runBackground(() => {
             readFileAuto(filePath)
@@ -115,6 +120,7 @@ export function useFileOpener() {
           const lang = isLarge ? 'plaintext' : getLanguageFromFileName(fileName);
 
           createTab(fileName, lang, filePath, 1, result.encoding as Encoding, result.text);
+          perf.recordFileOpen(result.text.length, performance.now() - openStart);
 
           if (isLarge) {
             const targetLang = getLanguageFromFileName(fileName);

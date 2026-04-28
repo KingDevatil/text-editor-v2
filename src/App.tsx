@@ -8,6 +8,7 @@ import { useEditorStore } from './hooks/useEditorStore';
 import { useFileOpener } from './hooks/useFileOpener';
 import { getEditorContent, updateEditorContent, getActiveView } from './hooks/useEditorStatePool';
 import { formatDocument } from './utils/cmCommands';
+import { perf } from './utils/perf';
 import type { Encoding } from './types';
 import Toolbar from './components/Toolbar';
 import TabBar from './components/TabBar';
@@ -262,12 +263,19 @@ function App() {
   );
 
   const handleTabClick = useCallback((id: string, group: 1 | 2) => {
+    const switchStart = performance.now();
     if (group === 1) {
       setActiveGroup1TabId(id);
     } else {
       setActiveGroup2TabId(id);
     }
     setActiveTabId(id);
+    // Defer measurement to after React render + CM6 setState
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        perf.recordTabSwitch(performance.now() - switchStart);
+      });
+    });
   }, [setActiveGroup1TabId, setActiveGroup2TabId, setActiveTabId]);
 
   const handleTabClose = useCallback((id: string) => {

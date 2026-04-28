@@ -8,6 +8,7 @@ import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { getThemeExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
+import { perf } from '../utils/perf';
 import type { Language } from '../types';
 import {
   getEditorState,
@@ -108,6 +109,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
     // Get or create state for this tab
     let state = getEditorState(tabId);
     if (!state) {
+      perf.mark(`editor-init-start-${tabId}`);
       state = EditorState.create({
         doc: initialContent,
         extensions: [
@@ -121,6 +123,12 @@ const CmEditor: React.FC<CmEditorProps> = ({
         ],
       });
       setEditorState(tabId, state);
+      perf.mark(`editor-init-end-${tabId}`);
+      perf.measure('editor-init', `editor-init-start-${tabId}`, `editor-init-end-${tabId}`, {
+        tabId,
+        language,
+        docLength: initialContent.length,
+      });
     }
 
     // Create new view
