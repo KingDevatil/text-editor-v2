@@ -38,6 +38,60 @@ const iniLanguage = StreamLanguage.define({
   },
 });
 
+// Custom Shell/Bash language support using StreamLanguage
+const shellLanguage = StreamLanguage.define({
+  token(stream) {
+    // Shebang
+    if (stream.sol() && stream.match(/^#!/)) {
+      stream.skipToEnd();
+      return 'meta';
+    }
+    // Comments
+    if (stream.peek() === '#') {
+      stream.skipToEnd();
+      return 'comment';
+    }
+    // Strings
+    if (stream.peek() === '"' || stream.peek() === "'") {
+      const quote = stream.peek();
+      stream.next();
+      let escaped = false;
+      while (!stream.eol()) {
+        const ch = stream.next();
+        if (escaped) {
+          escaped = false;
+        } else if (ch === '\\') {
+          escaped = true;
+        } else if (ch === quote) {
+          break;
+        }
+      }
+      return 'string';
+    }
+    // Variable substitution
+    if (stream.match(/\$\{[^}]*\}/) || stream.match(/\$[a-zA-Z_][a-zA-Z0-9_]*/)) {
+      return 'variableName';
+    }
+    // Common shell keywords
+    if (stream.match(/\b(?:if|then|else|elif|fi|for|while|do|done|case|esac|in|function|return|exit|break|continue|shift|export|local|readonly|unset)\b/)) {
+      return 'keyword';
+    }
+    // Built-in commands
+    if (stream.match(/\b(?:echo|printf|cd|pwd|ls|cat|grep|sed|awk|test|\[|\])\b/)) {
+      return 'builtin';
+    }
+    // Numbers
+    if (stream.match(/\b\d+\b/)) {
+      return 'number';
+    }
+    stream.next();
+    return null;
+  },
+  languageData: {
+    commentTokens: { line: '#' },
+  },
+});
+
 // Simple log file highlighter: colorize severity keywords
 import { ViewPlugin, ViewUpdate, Decoration } from '@codemirror/view';
 import { RangeSetBuilder } from '@codemirror/state';
@@ -126,8 +180,7 @@ export function getLanguageExtensions(lang: Language): Extension[] {
     case 'sql':
       return [sql()];
     case 'shell':
-      // TODO: Phase 2 — custom StreamLanguage for shell scripts
-      return [];
+      return [shellLanguage];
     case 'ini':
       return [iniLanguage];
     case 'log':
