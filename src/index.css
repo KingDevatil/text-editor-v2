@@ -24,6 +24,16 @@ input, textarea,
   -webkit-user-select: text;
 }
 
+/* CM6 selection layer: above content but semi-transparent so text remains visible */
+.cm-selectionLayer {
+  z-index: 2 !important;
+  pointer-events: none;
+}
+
+.cm-selectionBackground {
+  opacity: 0.55;
+}
+
 /* Theme transitions: only on container-level elements, NOT all DOM nodes */
 .theme-transition {
   transition: background-color 120ms ease-out, border-color 120ms ease-out, color 120ms ease-out;
