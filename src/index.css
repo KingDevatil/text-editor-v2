@@ -18,7 +18,8 @@ body {
 }
 
 /* Allow text selection only in editor, preview, and native inputs */
-input, textarea {
+input, textarea,
+.cm-content, .cm-line {
   user-select: text;
   -webkit-user-select: text;
 }

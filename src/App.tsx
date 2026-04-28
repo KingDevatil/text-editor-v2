@@ -320,6 +320,7 @@ function App() {
       if (!activeTab) return;
       const tabId = activeTab.id;
       const filePath = activeTab.filePath;
+      console.log('[EncodingChange] switching encoding:', enc, 'tabId:', tabId, 'filePath:', filePath);
       setTabEncoding(tabId, enc);
 
       if (isTauri() && filePath) {
@@ -328,10 +329,13 @@ function App() {
             path: filePath,
             encoding: enc,
           });
+          console.log('[EncodingChange] re-read file, length:', text.length);
           updateEditorContent(tabId, text);
         } catch (err) {
           console.error('[EncodingChange] failed to re-read file with encoding:', enc, err);
         }
+      } else {
+        console.log('[EncodingChange] skipped re-read (not Tauri or no filePath)');
       }
     },
     [activeTab, setTabEncoding]

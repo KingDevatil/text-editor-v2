@@ -44,7 +44,10 @@ export function hasEditorState(tabId: string): boolean {
  */
 export function updateEditorContent(tabId: string, newContent: string): void {
   const oldState = pool.states.get(tabId);
-  if (!oldState) return;
+  if (!oldState) {
+    console.log('[updateEditorContent] no state for tabId:', tabId);
+    return;
+  }
 
   const tr = oldState.update({
     changes: {
@@ -58,7 +61,10 @@ export function updateEditorContent(tabId: string, newContent: string): void {
   // If there's an active EditorView for this tab, dispatch the transaction
   const view = getActiveView(tabId);
   if (view) {
+    console.log('[updateEditorContent] dispatching to view, docChanged:', tr.docChanged, 'tabId:', tabId);
     view.dispatch(tr);
+  } else {
+    console.log('[updateEditorContent] no active view for tabId:', tabId);
   }
 }
 

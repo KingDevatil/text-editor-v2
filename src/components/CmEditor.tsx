@@ -133,6 +133,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
     // Save previous tab's state before switching
     if (view) {
+      setEditorState(tabId, view.state);
       view.destroy();
       viewRef.current = null;
     }
@@ -146,8 +147,10 @@ const CmEditor: React.FC<CmEditorProps> = ({
         extensions: [
           ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize),
           EditorView.updateListener.of((update) => {
+            // Always save state to pool so that effects (language/theme changes)
+            // are persisted, not just doc changes.
+            setEditorState(tabId, update.state);
             if (update.docChanged) {
-              setEditorState(tabId, update.state);
               onChangeRef.current();
             }
           }),
@@ -189,29 +192,42 @@ const CmEditor: React.FC<CmEditorProps> = ({
         viewRef.current = null;
       }
     };
-  }, [tabId, language, theme, fontSize, readOnly, initialContent, largeFileOptimize]);
+  // Only re-run when tabId changes (or largeFileOptimize which affects base extensions).
+  // Language/theme/fontSize/readOnly changes are handled by their own effects below.
+  }, [tabId, largeFileOptimize]);
 
   // Dynamic reconfiguration: language (async load heavy packs)
+  const langNonceRef = useRef(0);
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
 
-    // Apply lightweight extension immediately
+    const nonce = ++langNonceRef.current;
+    console.log('[CmEditor] language change:', language, 'tabId:', tabId);
+
+    // Apply lightweight extension immediately (clears old highlighting for heavy langs)
     view.dispatch({
       effects: languageCompartment.reconfigure(getLanguageExtensionsSync(language)),
     });
+    setEditorState(tabId, view.state);
 
     // Then load heavy pack in background
     loadLanguageExtensions(language).then((exts) => {
+      // Ignore stale responses from rapid language switches
+      if (nonce !== langNonceRef.current) {
+        console.log('[CmEditor] language change stale, ignoring', language);
+        return;
+      }
       if (viewRef.current) {
         viewRef.current.dispatch({
           effects: languageCompartment.reconfigure(exts),
         });
+        setEditorState(tabId, viewRef.current.state);
       }
     }).catch((err) => {
       console.error(`[CmEditor] Failed to load language ${language}:`, err);
     });
-  }, [language]);
+  }, [language, tabId]);
 
   // Dynamic reconfiguration: theme
   useEffect(() => {
@@ -220,7 +236,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
     view.dispatch({
       effects: themeCompartment.reconfigure(getThemeExtension(theme)),
     });
-  }, [theme]);
+    setEditorState(tabId, view.state);
+  }, [theme, tabId]);
 
   // Dynamic reconfiguration: font size
   useEffect(() => {
@@ -231,7 +248,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
         EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
       ),
     });
-  }, [fontSize]);
+    setEditorState(tabId, view.state);
+  }, [fontSize, tabId]);
 
   // Dynamic reconfiguration: read-only
   useEffect(() => {
@@ -240,7 +258,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
     view.dispatch({
       effects: readOnlyCompartment.reconfigure(EditorView.editable.of(!readOnly)),
     });
-  }, [readOnly]);
+    setEditorState(tabId, view.state);
+  }, [readOnly, tabId]);
 
   // Build context menu items based on current editor state
   const buildMenuItems = useCallback((): ContextMenuItem[] => {
