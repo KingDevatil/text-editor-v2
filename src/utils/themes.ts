@@ -1,7 +1,15 @@
 import { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
+import { syntaxHighlighting } from '@codemirror/language';
+import { classHighlighter } from '@lezer/highlight';
 
 export type EditorTheme = 'vs' | 'vs-dark';
+
+/**
+ * Syntax highlighting via CSS classes (tok-keyword, tok-string, etc.).
+ * Colors are defined in index.css for both light and dark themes.
+ */
+export const syntaxHighlightExtension: Extension = syntaxHighlighting(classHighlighter);
 
 /**
  * Light theme ("vs") — white background, dark text.

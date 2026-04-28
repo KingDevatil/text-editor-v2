@@ -120,6 +120,151 @@ export function formatXML(view: EditorView): boolean {
 }
 
 /**
+ * Simple CSS formatter: adds newlines and indentation around braces/semicolons.
+ */
+function formatCSS(view: EditorView): boolean {
+  const { state } = view;
+  const text = state.doc.toString();
+
+  let result = '';
+  let indent = 0;
+  const indentStr = '  ';
+  let inString = false;
+  let stringChar = '';
+  let escaped = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === stringChar) inString = false;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'") {
+      inString = true;
+      stringChar = ch;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '{') {
+      result += ' ' + ch + '\n' + indentStr.repeat(++indent);
+    } else if (ch === '}') {
+      result += '\n' + indentStr.repeat(--indent) + ch + '\n' + indentStr.repeat(indent);
+    } else if (ch === ';') {
+      result += ch + '\n' + indentStr.repeat(indent);
+    } else if (ch === '\n' || ch === '\t') {
+      // collapse original whitespace
+    } else if (ch === ' ') {
+      if (result.length > 0 && !/\s$/.test(result)) result += ' ';
+    } else {
+      result += ch;
+    }
+  }
+
+  view.dispatch({
+    changes: { from: 0, to: state.doc.length, insert: result.trim() },
+    selection: EditorSelection.cursor(0),
+  });
+  return true;
+}
+
+/**
+ * Simple JS/TS formatter: basic brace/semicolon indentation.
+ * Not a full formatter — safe for object literals and simple scripts.
+ */
+function formatJS(view: EditorView): boolean {
+  const { state } = view;
+  const text = state.doc.toString();
+
+  let result = '';
+  let indent = 0;
+  const indentStr = '  ';
+  let inString = false;
+  let stringChar = '';
+  let escaped = false;
+  let inLineComment = false;
+  let inBlockComment = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1] || '';
+
+    if (inLineComment) {
+      result += ch;
+      if (ch === '\n') {
+        inLineComment = false;
+        result += indentStr.repeat(indent);
+      }
+      continue;
+    }
+
+    if (inBlockComment) {
+      result += ch;
+      if (ch === '*' && next === '/') {
+        inBlockComment = false;
+        result += next;
+        i++;
+      }
+      continue;
+    }
+
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (ch === '\\') escaped = true;
+      else if (ch === stringChar) inString = false;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '"' || ch === "'" || ch === '`') {
+      inString = true;
+      stringChar = ch;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '/' && next === '/') {
+      inLineComment = true;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '/' && next === '*') {
+      inBlockComment = true;
+      result += ch;
+      continue;
+    }
+
+    if (ch === '{' || ch === '[') {
+      result += ch + '\n' + indentStr.repeat(++indent);
+    } else if (ch === '}' || ch === ']') {
+      result += '\n' + indentStr.repeat(--indent) + ch;
+    } else if (ch === ';') {
+      result += ch + '\n' + indentStr.repeat(indent);
+    } else if (ch === ',') {
+      result += ch + ' ';
+    } else if (ch === '\n' || ch === '\t') {
+      // ignore original whitespace
+    } else if (ch === ' ') {
+      if (result.length > 0 && !/\s$/.test(result)) result += ' ';
+    } else {
+      result += ch;
+    }
+  }
+
+  view.dispatch({
+    changes: { from: 0, to: state.doc.length, insert: result.trim() },
+    selection: EditorSelection.cursor(0),
+  });
+  return true;
+}
+
+/**
  * Dispatch a format command based on the current language.
  * Returns true if formatting was applied.
  */
@@ -132,6 +277,11 @@ export function formatDocument(view: EditorView, language: string): boolean {
       return formatXML(view);
     case 'sql':
       return formatSQL(view);
+    case 'css':
+      return formatCSS(view);
+    case 'javascript':
+    case 'typescript':
+      return formatJS(view);
     default:
       return false;
   }

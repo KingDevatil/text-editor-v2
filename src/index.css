@@ -188,3 +188,40 @@ input[type="range"]::-webkit-slider-thumb {
 .tab-dropdown-animate {
   animation: tabDropdownIn 150ms ease-out;
 }
+
+/* ── Syntax Highlighting (classHighlighter) ─────────────────────── */
+/* Light theme — VS Code "Light+" inspired palette */
+.tok-keyword       { color: #0000ff; }
+.tok-string        { color: #a31515; }
+.tok-number        { color: #098658; }
+.tok-comment       { color: #008000; font-style: italic; }
+.tok-variableName  { color: #001080; }
+.tok-typeName      { color: #267f99; }
+.tok-propertyName  { color: #001080; }
+.tok-operator      { color: #000000; }
+.tok-punctuation   { color: #000000; }
+.tok-meta          { color: #0000ff; }
+.tok-atom          { color: #0000ff; }
+.tok-bool          { color: #0000ff; }
+.tok-labelName     { color: #001080; }
+.tok-definition    { color: #795e26; }
+.tok-local         { color: #001080; }
+.tok-function      { color: #795e26; }
+
+/* Dark theme — VS Code "Dark+" inspired palette */
+.dark .tok-keyword       { color: #569cd6; }
+.dark .tok-string        { color: #ce9178; }
+.dark .tok-number        { color: #b5cea8; }
+.dark .tok-comment       { color: #6a9955; font-style: italic; }
+.dark .tok-variableName  { color: #9cdcfe; }
+.dark .tok-typeName      { color: #4ec9b0; }
+.dark .tok-propertyName  { color: #9cdcfe; }
+.dark .tok-operator      { color: #d4d4d4; }
+.dark .tok-punctuation   { color: #d4d4d4; }
+.dark .tok-meta          { color: #569cd6; }
+.dark .tok-atom          { color: #569cd6; }
+.dark .tok-bool          { color: #569cd6; }
+.dark .tok-labelName     { color: #9cdcfe; }
+.dark .tok-definition    { color: #dcdcaa; }
+.dark .tok-local         { color: #9cdcfe; }
+.dark .tok-function      { color: #dcdcaa; }

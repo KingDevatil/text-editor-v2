@@ -6,7 +6,7 @@ import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@c
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
 import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
-import { getThemeExtension, type EditorTheme } from '../utils/themes';
+import { getThemeExtension, syntaxHighlightExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
 import { perf } from '../utils/perf';
 import { isTauri } from '@tauri-apps/api/core';
@@ -35,7 +35,7 @@ const themeCompartment = new Compartment();
 const fontSizeCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
 
-const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini']);
+const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql']);
 
 /** Write text to clipboard — uses Tauri plugin in desktop, falls back to navigator API in browser. */
 async function writeClipboard(text: string): Promise<void> {
@@ -80,6 +80,7 @@ function buildBaseExtensions(
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of(searchKeymap),
+    syntaxHighlightExtension,
     languageCompartment.of(getLanguageExtensionsSync(lang)),
     themeCompartment.of(getThemeExtension(theme)),
     fontSizeCompartment.of(

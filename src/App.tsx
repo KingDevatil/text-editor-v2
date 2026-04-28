@@ -471,14 +471,21 @@ function App() {
   }, []);
 
   const canFormat = activeTab
-    ? ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'markdown', 'sql', 'yaml', 'ini'].includes(activeTab.language)
+    ? ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql'].includes(activeTab.language)
     : false;
 
   const handleFormat = useCallback(() => {
-    if (!activeTab) return;
+    if (!activeTab) {
+      console.log('[handleFormat] no activeTab');
+      return;
+    }
     const view = getActiveView(activeTab.id);
-    if (!view) return;
+    if (!view) {
+      console.log('[handleFormat] no view for tab', activeTab.id);
+      return;
+    }
     const ok = formatDocument(view, activeTab.language);
+    console.log('[handleFormat] result:', ok, 'language:', activeTab.language);
     if (ok) {
       markTabDirty(activeTab.id, true);
     }
