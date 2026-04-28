@@ -85,7 +85,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
 
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
 
   const canFormat = FORMATTABLE_LANGUAGES.has(language);
 
@@ -307,13 +307,11 @@ const CmEditor: React.FC<CmEditorProps> = ({
     ];
   }, [language, canFormat]);
 
-  const menuItems = React.useMemo(() => buildMenuItems(), [buildMenuItems]);
-
-  // Context menu handler
+  // Context menu handler — compute items at click time to ensure viewRef is ready
   const handleContextMenu = useCallback((e: MouseEvent) => {
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
-  }, []);
+    setContextMenu({ x: e.clientX, y: e.clientY, items: buildMenuItems() });
+  }, [buildMenuItems]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -334,7 +332,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
         <ContextMenu
           x={contextMenu.x}
           y={contextMenu.y}
-          items={menuItems}
+          items={contextMenu.items}
           onClose={() => setContextMenu(null)}
         />
       )}

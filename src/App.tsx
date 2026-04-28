@@ -148,9 +148,23 @@ function App() {
     createTab('Untitled', undefined, undefined, group);
   }, [createTab]);
 
-  const handleOpenFile = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
+  const handleOpenFile = useCallback(async () => {
+    if (isTauri()) {
+      try {
+        const selected = await open({ multiple: true });
+        if (selected) {
+          const paths = Array.isArray(selected) ? selected : [selected];
+          for (const filePath of paths) {
+            await openFile(filePath);
+          }
+        }
+      } catch (err) {
+        console.log('Open cancelled or failed', err);
+      }
+    } else {
+      fileInputRef.current?.click();
+    }
+  }, [openFile]);
 
   const handleFileSelected = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {

@@ -59,6 +59,10 @@ input, textarea, select {
   background-clip: content-box;
 }
 
+::-webkit-scrollbar-corner {
+  background: transparent;
+}
+
 .dark ::-webkit-scrollbar-thumb {
   background: #4b5563;
 }
