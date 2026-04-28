@@ -85,7 +85,8 @@ function buildBaseExtensions(
   largeFileOptimize: boolean,
   wordWrap: boolean,
   showWhitespace: boolean,
-  enableScrollPastEnd: boolean
+  enableScrollPastEnd: boolean,
+  tabId: string,
 ): Extension[] {
   const exts: Extension[] = [
     history(),
@@ -123,7 +124,7 @@ function buildBaseExtensions(
   }
 
   exts.push(lintCompartment.of(getLinterExtension(lang) || []));
-  exts.push(autocompleteCompartment.of(getAutocompleteExtension(lang) || []));
+  exts.push(autocompleteCompartment.of(getAutocompleteExtension(lang, tabId) || []));
   exts.push(...indentGuides);
   exts.push(hoverInfo);
   exts.push(bracketColorization);
@@ -180,7 +181,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd),
+          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId),
           EditorView.updateListener.of((update) => {
             // Always save state to pool so that effects (language/theme changes)
             // are persisted, not just doc changes.
@@ -271,7 +272,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       effects: [
         languageCompartment.reconfigure(getLanguageExtensionsSync(language)),
         lintCompartment.reconfigure(getLinterExtension(language) || []),
-        autocompleteCompartment.reconfigure(getAutocompleteExtension(language) || []),
+        autocompleteCompartment.reconfigure(getAutocompleteExtension(language, tabId) || []),
       ],
     });
     setEditorState(tabId, view.state);

@@ -20,27 +20,36 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
     if (!ctx) return;
 
     let rafId: number;
+    let pollId: ReturnType<typeof setTimeout>;
     let lastDocLen = -1;
     let lastVpFrom = -1;
     let lastVpTo = -1;
+    let lastW = -1;
+    let lastH = -1;
 
     const W = 120;
 
     const render = () => {
       const view = viewRef.current;
       if (!view) {
-        rafId = requestAnimationFrame(render);
+        // View not ready yet — poll at 10Hz instead of 60fps RAF to save CPU
+        pollId = setTimeout(render, 100);
         return;
       }
 
       const doc = view.state.doc;
       const viewport = view.viewport;
+      const rect = container.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const H = rect.height;
 
-      // 只在文档或视口变化时重绘
+      // Only repaint when doc, viewport, or canvas size actually changed
       if (
         doc.length === lastDocLen &&
         viewport.from === lastVpFrom &&
-        viewport.to === lastVpTo
+        viewport.to === lastVpTo &&
+        W === lastW &&
+        H === lastH
       ) {
         rafId = requestAnimationFrame(render);
         return;
@@ -50,14 +59,15 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       lastVpFrom = viewport.from;
       lastVpTo = viewport.to;
 
-      const rect = container.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      const H = rect.height;
-
-      canvas.width = W * dpr;
-      canvas.height = H * dpr;
-      canvas.style.width = `${W}px`;
-      canvas.style.height = `${H}px`;
+      // Update canvas size only when it actually changed
+      if (W !== lastW || H !== lastH) {
+        canvas.width = W * dpr;
+        canvas.height = H * dpr;
+        canvas.style.width = `${W}px`;
+        canvas.style.height = `${H}px`;
+        lastW = W;
+        lastH = H;
+      }
 
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
@@ -109,7 +119,10 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
     };
 
     rafId = requestAnimationFrame(render);
-    return () => cancelAnimationFrame(rafId);
+    return () => {
+      cancelAnimationFrame(rafId);
+      clearTimeout(pollId);
+    };
   }, [viewRef, theme]);
 
   const handleClick = useCallback(

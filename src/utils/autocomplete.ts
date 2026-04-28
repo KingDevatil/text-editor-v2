@@ -84,10 +84,13 @@ const KEYWORDS: Record<string, string[]> = {
   sql: SQL_KEYWORDS,
 };
 
-/* ── Word cache (global, single active editor assumption) ─────── */
-let wordCache: Completion[] | null = null;
-let lastDocLen = -1;
-let lastDocLines = -1;
+/* ── Per-tab word cache (prevents cross-tab pollution) ────────── */
+interface CacheEntry {
+  cache: Completion[];
+  len: number;
+  lines: number;
+}
+const wordCacheMap = new Map<string, CacheEntry>();
 
 function buildWordCache(doc: { lines: number; line: (n: number) => { text: string } }): Completion[] {
   const words = new Set<string>();
@@ -108,18 +111,21 @@ function buildWordCache(doc: { lines: number; line: (n: number) => { text: strin
   return list;
 }
 
-function getWordCompletions(doc: { lines: number; line: (n: number) => { text: string }; length: number }): Completion[] {
-  if (doc.length === lastDocLen && doc.lines === lastDocLines && wordCache) {
-    return wordCache;
+function getWordCompletions(
+  tabId: string,
+  doc: { lines: number; line: (n: number) => { text: string }; length: number }
+): Completion[] {
+  const entry = wordCacheMap.get(tabId);
+  if (entry && entry.len === doc.length && entry.lines === doc.lines) {
+    return entry.cache;
   }
-  wordCache = buildWordCache(doc);
-  lastDocLen = doc.length;
-  lastDocLines = doc.lines;
-  return wordCache;
+  const cache = buildWordCache(doc);
+  wordCacheMap.set(tabId, { cache, len: doc.length, lines: doc.lines });
+  return cache;
 }
 
 /* ── Completion source factory ────────────────────────────────── */
-function createCompletionSource(language: string) {
+function createCompletionSource(language: string, tabId: string) {
   const keywords = KEYWORDS[language] || [];
 
   return (context: CompletionContext) => {
@@ -144,7 +150,7 @@ function createCompletionSource(language: string) {
     // 2. Words from document (typed as 'variable')
     // Skip for very large files (>200KB) to keep it snappy
     if (context.state.doc.length < 200_000) {
-      const docWords = getWordCompletions(context.state.doc);
+      const docWords = getWordCompletions(tabId, context.state.doc);
       for (const w of docWords) {
         if (w.label.startsWith(prefix) && w.label !== prefix && !seen.has(w.label)) {
           seen.add(w.label);
@@ -165,18 +171,18 @@ function createCompletionSource(language: string) {
 
 /**
  * Return a CM6 autocompletion extension for the given language.
- * Falls back to word-based completion only if no keywords are defined.
+ * Falls back to word-based completion for markdown/yaml/ini.
  */
-export function getAutocompleteExtension(language: string): Extension | null {
+export function getAutocompleteExtension(language: string, tabId: string): Extension | null {
   const hasKeywords = language in KEYWORDS;
-  const hasLighterCompletion = language === 'markdown' || language === 'yaml' || language === 'ini';
+  const hasWordCompletion = language === 'markdown' || language === 'yaml' || language === 'ini';
 
-  if (!hasKeywords && !hasLighterCompletion) {
+  if (!hasKeywords && !hasWordCompletion) {
     return null;
   }
 
   return autocompletion({
-    override: [createCompletionSource(language)],
+    override: [createCompletionSource(language, tabId)],
     defaultKeymap: true,
     icons: false,
     closeOnBlur: true,

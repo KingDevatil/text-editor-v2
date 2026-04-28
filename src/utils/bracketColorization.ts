@@ -35,9 +35,52 @@ export const bracketColorization = ViewPlugin.fromClass(
       const text = view.state.doc.sliceString(from, to);
 
       const stack: { char: string; pos: number }[] = [];
+      let inString = false;
+      let stringChar = '';
+      let inComment = false;
 
       for (let i = 0; i < text.length; i++) {
         const ch = text[i];
+        const next = text[i + 1] || '';
+
+        // Skip comments (// ... \n, /* ... */)
+        if (!inString && !inComment && ch === '/' && next === '/') {
+          inComment = true;
+          i++;
+          continue;
+        }
+        if (inComment && ch === '\n') {
+          inComment = false;
+          continue;
+        }
+        if (!inString && !inComment && ch === '/' && next === '*') {
+          inComment = true;
+          i++;
+          continue;
+        }
+        if (inComment && ch === '*' && next === '/') {
+          inComment = false;
+          i++;
+          continue;
+        }
+        if (inComment) continue;
+
+        // Skip strings ("...", '...', `...`)
+        if (!inString && (ch === '"' || ch === "'" || ch === '`')) {
+          inString = true;
+          stringChar = ch;
+          continue;
+        }
+        if (inString) {
+          if (ch === '\\') {
+            i++; // skip escaped char
+            continue;
+          }
+          if (ch === stringChar) {
+            inString = false;
+          }
+          continue;
+        }
 
         if (ch in BRACKETS) {
           stack.push({ char: ch, pos: from + i });

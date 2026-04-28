@@ -154,15 +154,15 @@ function App() {
         e.preventDefault();
         setCommandPaletteOpen((v) => !v);
       }
-      // Go to definition shortcut
-      if (e.key === 'F12') {
+      // Go to definition shortcut (only intercept in Tauri; let F12 open DevTools in browser)
+      if (e.key === 'F12' && isTauri()) {
         e.preventDefault();
         if (activeTab) {
           const view = getActiveView(activeTab.id);
           if (view) {
             const ok = goToDefinition(view);
             if (!ok) {
-              alert('无法找到定义（当前仅支持同文件内跳转）');
+              console.warn('[GoToDef] 无法找到定义（当前仅支持同文件内跳转）');
             }
           }
         }
@@ -231,7 +231,7 @@ function App() {
           } catch (err) {
             console.error('Failed to read file:', fileName, err);
             if (isTauri() && filePath) {
-              alert(`无法读取文件: ${fileName}`);
+              console.warn(`[OpenFile] 无法读取文件: ${fileName}`);
             }
           }
         })());
@@ -489,9 +489,9 @@ function App() {
     if (!isTauri()) return;
     try {
       const result = await invoke<string>('register_as_default_app');
-      alert(result);
+      console.log('[RegisterDefault]', result);
     } catch (err) {
-      alert(String(err));
+      console.error('[RegisterDefault]', err);
     }
   }, []);
 
@@ -501,21 +501,21 @@ function App() {
 
   const handleFormat = useCallback(() => {
     if (!activeTab) {
-      alert('没有打开的文件');
+      console.warn('[Format] 没有打开的文件');
       return;
     }
     const view = getActiveView(activeTab.id);
     if (!view) {
-      console.error('[handleFormat] no view for tab', activeTab.id);
-      alert('无法获取编辑器实例，请尝试切换标签页后重试');
+      console.error('[Format] no view for tab', activeTab.id);
+      console.warn('[Format] 无法获取编辑器实例，请尝试切换标签页后重试');
       return;
     }
     const ok = formatDocument(view, activeTab.language);
-    console.log('[handleFormat] result:', ok, 'language:', activeTab.language);
+    console.log('[Format] result:', ok, 'language:', activeTab.language);
     if (ok) {
       markTabDirty(activeTab.id, true);
     } else {
-      alert(`格式化失败：${activeTab.language === 'json' ? 'JSON 格式不正确（检查是否有语法错误）' : '暂不支持该语言的格式化'}`);
+      console.warn(`[Format] 格式化失败：${activeTab.language === 'json' ? 'JSON 格式不正确（检查是否有语法错误）' : '暂不支持该语言的格式化'}`);
     }
   }, [activeTab, markTabDirty]);
   handleFormatRef.current = handleFormat;

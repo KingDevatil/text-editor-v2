@@ -2,10 +2,13 @@ import { linter, type Diagnostic } from '@codemirror/lint';
 import type { EditorView } from '@codemirror/view';
 import type { Extension } from '@codemirror/state';
 
+const LINT_MAX_SIZE = 500_000; // Skip linting for files > 500KB
+
 /**
  * JSON linter — uses JSON.parse() to detect syntax errors.
  */
 function jsonLinter(view: EditorView): Diagnostic[] {
+  if (view.state.doc.length > LINT_MAX_SIZE) return [];
   const text = view.state.doc.toString();
   if (!text.trim()) return [];
 
@@ -37,6 +40,7 @@ function jsonLinter(view: EditorView): Diagnostic[] {
  * Very lightweight, catches obvious syntax issues.
  */
 function jsLinter(view: EditorView): Diagnostic[] {
+  if (view.state.doc.length > LINT_MAX_SIZE) return [];
   const text = view.state.doc.toString();
   if (!text.trim()) return [];
 
@@ -71,6 +75,7 @@ function jsLinter(view: EditorView): Diagnostic[] {
  * Simple XML/HTML linter — checks for basic tag mismatch.
  */
 function xmlLinter(view: EditorView): Diagnostic[] {
+  if (view.state.doc.length > LINT_MAX_SIZE) return [];
   const text = view.state.doc.toString();
   if (!text.trim()) return [];
 
@@ -121,6 +126,7 @@ function xmlLinter(view: EditorView): Diagnostic[] {
  * Simple CSS linter — checks brace balance.
  */
 function cssLinter(view: EditorView): Diagnostic[] {
+  if (view.state.doc.length > LINT_MAX_SIZE) return [];
   const text = view.state.doc.toString();
   let depth = 0;
   const diagnostics: Diagnostic[] = [];

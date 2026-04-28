@@ -84,10 +84,15 @@ function buildJsonPath(view: EditorView, pos: number): string | null {
     else if (ch === '{' || ch === '[') {
       if (bracketDepth === 0) {
         if (ch === '[') {
-          // Count commas between this [ and the target line
+          // Count commas between this [ and the target line,
+          // but only at depth 0 (ignore commas inside nested objects/arrays)
           let commaCount = 0;
+          let nestedDepth = 0;
           for (let j = i + 1; j < pos; j++) {
-            if (doc.sliceString(j, j + 1) === ',') commaCount++;
+            const c = doc.sliceString(j, j + 1);
+            if (c === '{' || c === '[') nestedDepth++;
+            else if (c === '}' || c === ']') nestedDepth--;
+            else if (c === ',' && nestedDepth === 0) commaCount++;
           }
           arrayIndex = commaCount;
           parts.unshift(`[${arrayIndex}]`);
@@ -109,9 +114,11 @@ function buildJsonPath(view: EditorView, pos: number): string | null {
 }
 
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 /**

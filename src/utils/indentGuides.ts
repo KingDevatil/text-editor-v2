@@ -39,12 +39,14 @@ export const indentGuides = [
           const line = view.state.doc.lineAt(pos);
           const text = line.text;
 
-          // Count leading whitespace
+          // Count leading whitespace (tabs count as tabSize visually)
           let indentChars = 0;
           for (let i = 0; i < text.length; i++) {
             const ch = text[i];
-            if (ch === ' ' || ch === '\t') {
+            if (ch === ' ') {
               indentChars++;
+            } else if (ch === '\t') {
+              indentChars += tabSize;
             } else {
               break;
             }
