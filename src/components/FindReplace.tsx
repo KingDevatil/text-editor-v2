@@ -1,14 +1,12 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { ChevronDown, ChevronUp, X, Replace, ReplaceAll } from 'lucide-react';
-import * as monaco from 'monaco-editor';
 
 interface FindReplaceProps {
   visible: boolean;
   onClose: () => void;
-  editorRef?: React.MutableRefObject<monaco.editor.IStandaloneCodeEditor | null>;
 }
 
-const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose, editorRef }) => {
+const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
   const [findText, setFindText] = useState('');
   const [replaceText, setReplaceText] = useState('');
   const [showReplace, setShowReplace] = useState(true);
@@ -21,35 +19,15 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose, editorRef }
     }
   }, [visible]);
 
+  // Phase 1: placeholder actions — full CM6 search integration in Phase 3
   const handleReplace = () => {
-    const editor = editorRef?.current;
-    if (!editor || !findText) return;
-    const model = editor.getModel();
-    if (!model) return;
-    const matches = model.findMatches(findText, false, false, caseSensitive, null, true);
-    if (matches.length === 0) return;
-    // Replace first match
-    const edit: monaco.editor.IIdentifiedSingleEditOperation = {
-      range: matches[0].range,
-      text: replaceText,
-    };
-    editor.executeEdits('find-replace', [edit]);
-    editor.focus();
+    // TODO: Phase 3 — integrate with CM6 SearchCursor
+    console.log('[FindReplace] replace', { findText, replaceText, caseSensitive });
   };
 
   const handleReplaceAll = () => {
-    const editor = editorRef?.current;
-    if (!editor || !findText) return;
-    const model = editor.getModel();
-    if (!model) return;
-    const matches = model.findMatches(findText, false, false, caseSensitive, null, true);
-    if (matches.length === 0) return;
-    const edits: monaco.editor.IIdentifiedSingleEditOperation[] = matches.map((m) => ({
-      range: m.range,
-      text: replaceText,
-    }));
-    editor.executeEdits('find-replace-all', edits);
-    editor.focus();
+    // TODO: Phase 3 — integrate with CM6 SearchCursor
+    console.log('[FindReplace] replace all', { findText, replaceText, caseSensitive });
   };
 
   if (!visible) return null;
@@ -136,7 +114,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose, editorRef }
           />
           <span>区分大小写</span>
         </label>
-        <span className="text-gray-400 dark:text-gray-500">提示: 使用编辑器内置的 Ctrl+H 可进行高级查找替换</span>
+        <span className="text-gray-400 dark:text-gray-500">提示: 使用编辑器内置的 Ctrl+F / Ctrl+H 可进行高级查找替换</span>
       </div>
     </div>
   );

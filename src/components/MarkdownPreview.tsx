@@ -1,31 +1,35 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { marked } from 'marked';
-import * as monaco from 'monaco-editor';
+import { getEditorContent } from '../hooks/useEditorStatePool';
 
 interface MarkdownPreviewProps {
-  modelUri: string;
+  tabId: string;
   theme: string;
 }
 
-const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ modelUri, theme }) => {
+const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, theme }) => {
   const [content, setContent] = useState('');
+  const rafRef = useRef<number | null>(null);
+  const lastContentRef = useRef('');
 
-  // Listen to Monaco model content changes for real-time preview
+  // Poll content changes using requestAnimationFrame (cheap, stops when offscreen)
   useEffect(() => {
-    const model = monaco.editor.getModel(monaco.Uri.parse(modelUri));
-    if (!model) {
-      setContent('');
-      return;
-    }
-    setContent(model.getValue());
+    const poll = () => {
+      const current = getEditorContent(tabId);
+      if (current !== lastContentRef.current) {
+        lastContentRef.current = current;
+        setContent(current);
+      }
+      rafRef.current = requestAnimationFrame(poll);
+    };
+    rafRef.current = requestAnimationFrame(poll);
+    return () => {
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
+    };
+  }, [tabId]);
 
-    const disposable = model.onDidChangeContent(() => {
-      setContent(model.getValue());
-    });
-    return () => disposable.dispose();
-  }, [modelUri]);
-
-  // Debounced markdown rendering using useDeferredValue
   const deferredContent = React.useDeferredValue(content);
   const html = useMemo(() => {
     return marked.parse(deferredContent, { async: false }) as string;

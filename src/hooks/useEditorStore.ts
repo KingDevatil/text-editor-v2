@@ -1,0 +1,276 @@
+import { create } from 'zustand';
+import type { EditorTab, Language, Encoding } from '../types';
+import { EXT_TO_LANGUAGE } from '../types';
+
+let tabCounter = 0;
+
+function generateId(): string {
+  return `tab-${++tabCounter}-${Date.now()}`;
+}
+
+function getLanguageFromFileName(fileName: string): Language {
+  const ext = fileName.split('.').pop()?.toLowerCase() || '';
+  return EXT_TO_LANGUAGE[ext] || 'plaintext';
+}
+
+interface EditorState {
+  tabs: EditorTab[];
+  activeTabId: string | null;
+  activeGroup1TabId: string | null;
+  activeGroup2TabId: string | null;
+  theme: 'vs' | 'vs-dark' | 'hc-black';
+  sidebarVisible: boolean;
+  findReplaceVisible: boolean;
+  unicodeHighlight: boolean;
+  fontSize: number;
+  previewVisible: boolean;
+  splitMode: boolean;
+  projectPath: string | null;
+  largeFileOptimize: boolean;
+}
+
+interface EditorActions {
+  createTab: (title?: string, language?: Language, filePath?: string, group?: 1 | 2, encoding?: Encoding, initialContent?: string) => EditorTab;
+  markTabDirty: (tabId: string, isDirty: boolean) => void;
+  closeTab: (tabId: string) => void;
+  closeTabs: (idsToClose: string[]) => void;
+  closeAllTabs: () => void;
+  markTabSaved: (tabId: string) => void;
+  renameTab: (tabId: string, newTitle: string, newFilePath?: string) => void;
+  setTabEncoding: (tabId: string, encoding: Encoding) => void;
+  setTabLanguage: (tabId: string, language: string) => void;
+  moveTabToGroup: (tabId: string, group: 1 | 2) => void;
+  setSplitMode: (mode: boolean) => void;
+  setActiveTabId: (id: string | null) => void;
+  setActiveGroup1TabId: (id: string | null) => void;
+  setActiveGroup2TabId: (id: string | null) => void;
+  setTheme: (theme: 'vs' | 'vs-dark' | 'hc-black' | ((prev: 'vs' | 'vs-dark' | 'hc-black') => 'vs' | 'vs-dark' | 'hc-black')) => void;
+  setSidebarVisible: (visible: boolean) => void;
+  setFindReplaceVisible: (visible: boolean) => void;
+  setUnicodeHighlight: (highlight: boolean) => void;
+  setFontSize: (size: number) => void;
+  setPreviewVisible: (visible: boolean) => void;
+  setProjectPath: (path: string | null) => void;
+  setLargeFileOptimize: (optimize: boolean) => void;
+}
+
+const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
+  tabs: [],
+  activeTabId: null,
+  activeGroup1TabId: null,
+  activeGroup2TabId: null,
+  theme: 'vs-dark',
+  sidebarVisible: true,
+  findReplaceVisible: false,
+  unicodeHighlight: false,
+  fontSize: 14,
+  previewVisible: false,
+  splitMode: false,
+  projectPath: null,
+  largeFileOptimize: false,
+
+  createTab: (title = 'Untitled', language, filePath, group = 1, encoding = 'UTF-8', initialContent = '') => {
+    const lang = language || getLanguageFromFileName(title);
+    const id = generateId();
+    const newTab: EditorTab = {
+      id,
+      title,
+      language: lang,
+      isDirty: false,
+      filePath,
+      encoding,
+      group,
+      initialContent,
+    };
+    set((state) => {
+      const nextTabs = [...state.tabs, newTab];
+      const nextActive = newTab.id;
+      return {
+        tabs: nextTabs,
+        activeTabId: nextActive,
+        activeGroup1TabId: group === 1 ? nextActive : state.activeGroup1TabId,
+        activeGroup2TabId: group === 2 ? nextActive : state.activeGroup2TabId,
+      };
+    });
+    return newTab;
+  },
+
+  markTabDirty: (tabId, isDirty) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, isDirty } : tab)),
+    }));
+  },
+
+  closeTab: (tabId) => {
+    set((state) => {
+      const tab = state.tabs.find((t) => t.id === tabId);
+      const closedGroup = tab?.group || 1;
+      const newTabs = state.tabs.filter((t) => t.id !== tabId);
+
+      let nextActiveTabId = state.activeTabId;
+      let nextActiveGroup1Id = state.activeGroup1TabId;
+      let nextActiveGroup2Id = state.activeGroup2TabId;
+
+      if (state.activeGroup1TabId === tabId) {
+        const g1Tabs = newTabs.filter((t) => t.group === 1 || !t.group);
+        nextActiveGroup1Id = g1Tabs[g1Tabs.length - 1]?.id || null;
+      }
+      if (state.activeGroup2TabId === tabId) {
+        const g2Tabs = newTabs.filter((t) => t.group === 2);
+        nextActiveGroup2Id = g2Tabs[g2Tabs.length - 1]?.id || null;
+      }
+
+      if (state.activeTabId === tabId) {
+        if (closedGroup === 1) {
+          const g1Tabs = newTabs.filter((t) => t.group === 1 || !t.group);
+          if (g1Tabs.length > 0) nextActiveTabId = g1Tabs[g1Tabs.length - 1].id;
+          else if (nextActiveGroup2Id) nextActiveTabId = nextActiveGroup2Id;
+          else nextActiveTabId = null;
+        } else {
+          const g2Tabs = newTabs.filter((t) => t.group === 2);
+          if (g2Tabs.length > 0) nextActiveTabId = g2Tabs[g2Tabs.length - 1].id;
+          else {
+            const g1Tabs = newTabs.filter((t) => t.group === 1 || !t.group);
+            nextActiveTabId = g1Tabs[g1Tabs.length - 1]?.id || null;
+          }
+        }
+      }
+
+      return {
+        tabs: newTabs,
+        activeTabId: nextActiveTabId,
+        activeGroup1TabId: nextActiveGroup1Id,
+        activeGroup2TabId: nextActiveGroup2Id,
+        splitMode: newTabs.length < 2 ? false : state.splitMode,
+      };
+    });
+  },
+
+  closeTabs: (idsToClose) => {
+    if (idsToClose.length === 0) return;
+    set((state) => {
+      const newTabs = state.tabs.filter((t) => !idsToClose.includes(t.id));
+      const g1Tabs = newTabs.filter((t) => t.group === 1 || !t.group);
+      const g2Tabs = newTabs.filter((t) => t.group === 2);
+
+      let nextActiveTabId = state.activeTabId;
+      let nextActiveGroup1Id = state.activeGroup1TabId;
+      let nextActiveGroup2Id = state.activeGroup2TabId;
+
+      if (state.activeGroup1TabId && idsToClose.includes(state.activeGroup1TabId)) {
+        nextActiveGroup1Id = g1Tabs[g1Tabs.length - 1]?.id || null;
+      }
+      if (state.activeGroup2TabId && idsToClose.includes(state.activeGroup2TabId)) {
+        nextActiveGroup2Id = g2Tabs[g2Tabs.length - 1]?.id || null;
+      }
+
+      if (state.activeTabId && idsToClose.includes(state.activeTabId)) {
+        if (g2Tabs.length > 0) nextActiveTabId = g2Tabs[g2Tabs.length - 1].id;
+        else nextActiveTabId = g1Tabs[g1Tabs.length - 1]?.id || null;
+      }
+
+      return {
+        tabs: newTabs,
+        activeTabId: nextActiveTabId,
+        activeGroup1TabId: nextActiveGroup1Id,
+        activeGroup2TabId: nextActiveGroup2Id,
+        splitMode: newTabs.length < 2 ? false : state.splitMode,
+      };
+    });
+  },
+
+  closeAllTabs: () => {
+    set({
+      tabs: [],
+      activeTabId: null,
+      activeGroup1TabId: null,
+      activeGroup2TabId: null,
+      splitMode: false,
+      previewVisible: false,
+    });
+  },
+
+  markTabSaved: (tabId) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, isDirty: false } : tab)),
+    }));
+  },
+
+  renameTab: (tabId, newTitle, newFilePath) => {
+    const lang = getLanguageFromFileName(newTitle);
+    set((state) => ({
+      tabs: state.tabs.map((tab) =>
+        tab.id === tabId ? { ...tab, title: newTitle, language: lang, filePath: newFilePath || tab.filePath } : tab
+      ),
+    }));
+  },
+
+  setTabEncoding: (tabId, encoding) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, encoding } : tab)),
+    }));
+  },
+
+  setTabLanguage: (tabId, language) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, language } : tab)),
+    }));
+  },
+
+  moveTabToGroup: (tabId, group) => {
+    set((state) => ({
+      tabs: state.tabs.map((tab) => (tab.id === tabId ? { ...tab, group } : tab)),
+      activeTabId: tabId,
+      activeGroup1TabId: group === 1 ? tabId : state.activeGroup1TabId,
+      activeGroup2TabId: group === 2 ? tabId : state.activeGroup2TabId,
+    }));
+  },
+
+  setSplitMode: (mode) => {
+    set((state) => {
+      if (mode && state.tabs.length < 2) return state;
+      if (!mode) {
+        return {
+          splitMode: false,
+          tabs: state.tabs.map((t) => ({ ...t, group: 1 as 1 })),
+          activeGroup2TabId: null,
+        };
+      }
+      const hasGroup2 = state.tabs.some((t) => t.group === 2);
+      let nextTabs = state.tabs;
+      let nextActiveGroup2Id = state.activeGroup2TabId;
+      if (!hasGroup2 && state.tabs.length >= 2 && state.activeTabId) {
+        nextTabs = state.tabs.map((t) => (t.id === state.activeTabId ? { ...t, group: 2 as 2 } : t));
+        nextActiveGroup2Id = state.activeTabId;
+      }
+      return {
+        splitMode: true,
+        previewVisible: false,
+        tabs: nextTabs,
+        activeGroup2TabId: nextActiveGroup2Id || state.activeTabId,
+      };
+    });
+  },
+
+  setActiveTabId: (id) => set({ activeTabId: id }),
+  setActiveGroup1TabId: (id) => set({ activeGroup1TabId: id }),
+  setActiveGroup2TabId: (id) => set({ activeGroup2TabId: id }),
+
+  setTheme: (theme) => {
+    if (typeof theme === 'function') {
+      set((state) => ({ theme: theme(state.theme) }));
+    } else {
+      set({ theme });
+    }
+  },
+
+  setSidebarVisible: (visible) => set({ sidebarVisible: visible }),
+  setFindReplaceVisible: (visible) => set({ findReplaceVisible: visible }),
+  setUnicodeHighlight: (highlight) => set({ unicodeHighlight: highlight }),
+  setFontSize: (size) => set({ fontSize: size }),
+  setPreviewVisible: (visible) => set({ previewVisible: visible }),
+  setProjectPath: (path) => set({ projectPath: path }),
+  setLargeFileOptimize: (optimize) => set({ largeFileOptimize: optimize }),
+}));
+
+export { useEditorStore };

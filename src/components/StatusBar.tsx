@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect, useMemo } from 'react';
+import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { FileType, ChevronUp } from 'lucide-react';
-import * as monaco from 'monaco-editor';
 import type { EditorTab, Encoding } from '../types';
+import { getEditorContent, getEditorLineCount, getEditorValueLength } from '../hooks/useEditorStatePool';
 
 interface StatusBarProps {
   activeTab: EditorTab | null;
@@ -58,71 +58,65 @@ function useClickOutside(ref: React.RefObject<HTMLElement | null>, onClose: () =
   }, [ref, onClose]);
 }
 
+function countWords(text: string): number {
+  let count = 0;
+  const lines = text.split('\n');
+  const limit = Math.min(lines.length, 100000);
+  for (let i = 0; i < limit; i++) {
+    const matches = lines[i].match(/[\u4e00-\u9fa5]|[a-zA-Z]+|[0-9]+/g);
+    if (matches) {
+      count += matches.length;
+    }
+  }
+  return count;
+}
+
 const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEncodingChange, onLanguageChange }) => {
   const [wordCount, setWordCount] = useState(0);
   const [calculating, setCalculating] = useState(false);
+  const rafRef = useRef<number | null>(null);
+  const lastContentRef = useRef('');
 
-  // O(1) quick stats - immediately available, no blocking
+  // Quick stats from state pool
   const quickStats = useMemo(() => {
     if (!activeTab) return { lineCount: 0, charCount: 0 };
-    const model = monaco.editor.getModel(monaco.Uri.parse(activeTab.modelUri));
-    if (!model) return { lineCount: 0, charCount: 0 };
     return {
-      lineCount: model.getLineCount(),
-      charCount: model.getValueLength(),
+      lineCount: getEditorLineCount(activeTab.id),
+      charCount: getEditorValueLength(activeTab.id),
     };
-  }, [activeTab?.modelUri]);
+  }, [activeTab?.id]);
 
-  // Async debounced word count - does not block UI
-  // Re-calculates when tab changes or model content changes
+  // Async debounced word count via polling (CM6 has no model.onDidChangeContent)
   useEffect(() => {
     if (!activeTab) {
       setWordCount(0);
       setCalculating(false);
       return;
     }
-    const model = monaco.editor.getModel(monaco.Uri.parse(activeTab.modelUri));
-    if (!model) {
-      setWordCount(0);
-      setCalculating(false);
-      return;
-    }
 
-    const isLarge = model.getValueLength() > 500 * 1024;
-    if (isLarge) setCalculating(true);
+    const poll = () => {
+      const content = getEditorContent(activeTab.id);
+      if (content !== lastContentRef.current) {
+        lastContentRef.current = content;
+        const isLarge = content.length > 500 * 1024;
+        if (isLarge) setCalculating(true);
 
-    const doCount = () => {
-      let count = 0;
-      const lineCount = model.getLineCount();
-      const limit = Math.min(lineCount, 100000);
-      for (let i = 1; i <= limit; i++) {
-        const line = model.getLineContent(i);
-        // 字数 = 汉字 + 英文单词 + 数字串（标点、空格不计入）
-        const matches = line.match(/[\u4e00-\u9fa5]|[a-zA-Z]+|[0-9]+/g);
-        if (matches) {
-          count += matches.length;
-        }
+        // Defer heavy counting
+        setTimeout(() => {
+          setWordCount(countWords(content));
+          setCalculating(false);
+        }, isLarge ? 800 : 300);
       }
-      setWordCount(count);
-      setCalculating(false);
+      rafRef.current = requestAnimationFrame(poll);
     };
 
-    // Initial count
-    const timer = setTimeout(doCount, isLarge ? 800 : 300);
-
-    // Re-count on content change (debounced)
-    let changeTimer: ReturnType<typeof setTimeout> | null = null;
-    const disposable = model.onDidChangeContent(() => {
-      if (changeTimer) clearTimeout(changeTimer);
-      changeTimer = setTimeout(doCount, isLarge ? 800 : 300);
-    });
-
+    rafRef.current = requestAnimationFrame(poll);
     return () => {
-      clearTimeout(timer);
-      if (changeTimer) clearTimeout(changeTimer);
-      disposable.dispose();
+      if (rafRef.current !== null) {
+        cancelAnimationFrame(rafRef.current);
+      }
     };
-  }, [activeTab?.modelUri]);
+  }, [activeTab?.id]);
 
   const isDark = theme === 'vs-dark' || theme === 'hc-black';
 
@@ -152,7 +146,6 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEn
       <div className="flex items-center gap-3">
         {activeTab && (
           <>
-            {/* Language Mode Switcher */}
             <div className="relative" ref={langRef}>
               <button
                 onClick={() => { setLangOpen(!langOpen); setEncOpen(false); }}
@@ -201,7 +194,6 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({ activeTab, theme, onEn
             <span className="tabular-nums">字数 {calculating ? '...' : wordCount.toLocaleString()}</span>
           </>
         )}
-        {/* Encoding Switcher */}
         <div className="relative" ref={encRef}>
           <button
             onClick={() => { setEncOpen(!encOpen); setLangOpen(false); }}

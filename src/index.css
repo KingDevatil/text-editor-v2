@@ -106,17 +106,22 @@ input[type="range"]::-webkit-slider-thumb {
   border-color: #1f2937;
 }
 
-/* Monaco Editor fixes */
-.monaco-editor {
+/* CodeMirror 6 fixes */
+.cm-editor {
+  outline: none !important;
+  height: 100%;
+}
+
+.cm-editor.cm-focused {
   outline: none !important;
 }
 
 /* Subtle divider between line numbers and editor content */
-.monaco-editor .margin {
+.cm-gutters {
   box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08) !important;
 }
 
-.dark .monaco-editor .margin {
+.dark .cm-gutters {
   box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08) !important;
 }
 
