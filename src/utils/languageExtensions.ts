@@ -1,21 +1,10 @@
 import type { Extension } from '@codemirror/state';
-import { javascript } from '@codemirror/lang-javascript';
-import { css } from '@codemirror/lang-css';
-import { html } from '@codemirror/lang-html';
-import { json } from '@codemirror/lang-json';
-import { python } from '@codemirror/lang-python';
-import { java } from '@codemirror/lang-java';
-import { cpp } from '@codemirror/lang-cpp';
-import { rust } from '@codemirror/lang-rust';
-import { go } from '@codemirror/lang-go';
-import { markdown } from '@codemirror/lang-markdown';
-import { yaml } from '@codemirror/lang-yaml';
-import { xml } from '@codemirror/lang-xml';
-import { sql } from '@codemirror/lang-sql';
 import { StreamLanguage } from '@codemirror/language';
+import { ViewPlugin, ViewUpdate, Decoration } from '@codemirror/view';
+import { RangeSetBuilder } from '@codemirror/state';
 import type { Language } from '../types';
 
-// Custom INI language support using StreamLanguage
+// ── Custom INI language support ─────────────────────────────
 const iniLanguage = StreamLanguage.define({
   token(stream) {
     if (stream.sol() && stream.peek() === '[') {
@@ -38,20 +27,17 @@ const iniLanguage = StreamLanguage.define({
   },
 });
 
-// Custom Shell/Bash language support using StreamLanguage
+// ── Custom Shell/Bash language support ──────────────────────
 const shellLanguage = StreamLanguage.define({
   token(stream) {
-    // Shebang
     if (stream.sol() && stream.match(/^#!/)) {
       stream.skipToEnd();
       return 'meta';
     }
-    // Comments
     if (stream.peek() === '#') {
       stream.skipToEnd();
       return 'comment';
     }
-    // Strings
     if (stream.peek() === '"' || stream.peek() === "'") {
       const quote = stream.peek();
       stream.next();
@@ -68,19 +54,15 @@ const shellLanguage = StreamLanguage.define({
       }
       return 'string';
     }
-    // Variable substitution
     if (stream.match(/\$\{[^}]*\}/) || stream.match(/\$[a-zA-Z_][a-zA-Z0-9_]*/)) {
       return 'variableName';
     }
-    // Common shell keywords
     if (stream.match(/\b(?:if|then|else|elif|fi|for|while|do|done|case|esac|in|function|return|exit|break|continue|shift|export|local|readonly|unset)\b/)) {
       return 'keyword';
     }
-    // Built-in commands
     if (stream.match(/\b(?:echo|printf|cd|pwd|ls|cat|grep|sed|awk|test|\[|\])\b/)) {
       return 'builtin';
     }
-    // Numbers
     if (stream.match(/\b\d+\b/)) {
       return 'number';
     }
@@ -92,10 +74,7 @@ const shellLanguage = StreamLanguage.define({
   },
 });
 
-// Simple log file highlighter: colorize severity keywords
-import { ViewPlugin, ViewUpdate, Decoration } from '@codemirror/view';
-import { RangeSetBuilder } from '@codemirror/state';
-
+// ── Custom Log file highlighter ─────────────────────────────
 const logSeverityDecorations = {
   error: Decoration.mark({ class: 'cm-log-error' }),
   warn: Decoration.mark({ class: 'cm-log-warn' }),
@@ -143,53 +122,137 @@ const logHighlightPlugin = ViewPlugin.fromClass(
 
 const logHighlight = (): Extension => logHighlightPlugin;
 
+// ── Cache for dynamically loaded language extensions ────────
+const languageCache = new Map<string, Extension[]>();
+
+// Lightweight languages that don't need dynamic import
+const LIGHTWEIGHT_LANGUAGES = new Set<Language>(['ini', 'log', 'shell', 'plaintext', 'csharp']);
+
 /**
- * Map our Language type to CodeMirror 6 language extensions.
- * Returns an array so we can compose multiple extensions if needed.
+ * Synchronous language extensions for lightweight/custom languages.
+ * Heavy language packs (@codemirror/lang-*) return [] here and must
+ * be loaded via `loadLanguageExtensions()`.
  */
-export function getLanguageExtensions(lang: Language): Extension[] {
+export function getLanguageExtensionsSync(lang: Language): Extension[] {
   switch (lang) {
-    case 'javascript':
-      return [javascript({ jsx: true, typescript: false })];
-    case 'typescript':
-      return [javascript({ jsx: true, typescript: true })];
-    case 'html':
-      return [html()];
-    case 'css':
-      return [css()];
-    case 'json':
-      return [json()];
-    case 'python':
-      return [python()];
-    case 'java':
-      return [java()];
-    case 'cpp':
-      return [cpp()];
-    case 'c':
-      return [cpp()];
-    case 'rust':
-      return [rust()];
-    case 'go':
-      return [go()];
-    case 'markdown':
-      return [markdown()];
-    case 'yaml':
-      return [yaml()];
-    case 'xml':
-      return [xml()];
-    case 'sql':
-      return [sql()];
-    case 'shell':
-      return [shellLanguage];
     case 'ini':
       return [iniLanguage];
     case 'log':
       return [logHighlight()];
-    case 'csharp':
-      // CM6 has no dedicated C# lang pack; treat as plain with basic word highlighting
-      return [];
+    case 'shell':
+      return [shellLanguage];
     case 'plaintext':
+    case 'csharp':
     default:
       return [];
+  }
+}
+
+/**
+ * Asynchronously load language extensions with dynamic import and caching.
+ * Heavy @codemirror/lang-* packs are loaded on-demand, reducing initial bundle.
+ */
+export async function loadLanguageExtensions(lang: Language): Promise<Extension[]> {
+  if (languageCache.has(lang)) {
+    return languageCache.get(lang)!;
+  }
+
+  // Lightweight languages: return immediately
+  if (LIGHTWEIGHT_LANGUAGES.has(lang)) {
+    const exts = getLanguageExtensionsSync(lang);
+    languageCache.set(lang, exts);
+    return exts;
+  }
+
+  let exts: Extension[] = [];
+
+  switch (lang) {
+    case 'javascript': {
+      const { javascript } = await import('@codemirror/lang-javascript');
+      exts = [javascript({ jsx: true, typescript: false })];
+      break;
+    }
+    case 'typescript': {
+      const { javascript } = await import('@codemirror/lang-javascript');
+      exts = [javascript({ jsx: true, typescript: true })];
+      break;
+    }
+    case 'html': {
+      const { html } = await import('@codemirror/lang-html');
+      exts = [html()];
+      break;
+    }
+    case 'css': {
+      const { css } = await import('@codemirror/lang-css');
+      exts = [css()];
+      break;
+    }
+    case 'json': {
+      const { json } = await import('@codemirror/lang-json');
+      exts = [json()];
+      break;
+    }
+    case 'python': {
+      const { python } = await import('@codemirror/lang-python');
+      exts = [python()];
+      break;
+    }
+    case 'java': {
+      const { java } = await import('@codemirror/lang-java');
+      exts = [java()];
+      break;
+    }
+    case 'cpp':
+    case 'c': {
+      const { cpp } = await import('@codemirror/lang-cpp');
+      exts = [cpp()];
+      break;
+    }
+    case 'rust': {
+      const { rust } = await import('@codemirror/lang-rust');
+      exts = [rust()];
+      break;
+    }
+    case 'go': {
+      const { go } = await import('@codemirror/lang-go');
+      exts = [go()];
+      break;
+    }
+    case 'markdown': {
+      const { markdown } = await import('@codemirror/lang-markdown');
+      exts = [markdown()];
+      break;
+    }
+    case 'yaml': {
+      const { yaml } = await import('@codemirror/lang-yaml');
+      exts = [yaml()];
+      break;
+    }
+    case 'xml': {
+      const { xml } = await import('@codemirror/lang-xml');
+      exts = [xml()];
+      break;
+    }
+    case 'sql': {
+      const { sql } = await import('@codemirror/lang-sql');
+      exts = [sql()];
+      break;
+    }
+    default:
+      exts = [];
+  }
+
+  languageCache.set(lang, exts);
+  return exts;
+}
+
+/**
+ * Preload commonly used language packs in the background.
+ * Call this after app init to warm the cache for typical languages.
+ */
+export function preloadCommonLanguages(): void {
+  const common: Language[] = ['javascript', 'typescript', 'html', 'css', 'json', 'markdown'];
+  for (const lang of common) {
+    loadLanguageExtensions(lang).catch(() => {});
   }
 }

@@ -4,12 +4,12 @@ import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLineGutt
 import { EditorState, Compartment } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { getLanguageExtensions } from '../utils/languageExtensions';
+import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
+import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { getThemeExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
 import type { Language } from '../types';
 import {
-  createEditorState,
   getEditorState,
   setEditorState,
   setActiveView,
@@ -24,6 +24,7 @@ interface CmEditorProps {
   fontSize: number;
   readOnly?: boolean;
   initialContent?: string;
+  largeFileOptimize?: boolean;
 }
 
 // Compartments allow dynamic reconfiguration without recreating the state.
@@ -36,9 +37,10 @@ function buildBaseExtensions(
   lang: Language,
   theme: EditorTheme,
   fontSize: number,
-  readOnly: boolean
-) {
-  return [
+  readOnly: boolean,
+  largeFileOptimize: boolean
+): Extension[] {
+  const exts: Extension[] = [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     lineNumbers(),
@@ -47,13 +49,23 @@ function buildBaseExtensions(
     highlightActiveLine(),
     highlightSelectionMatches(),
     keymap.of(searchKeymap),
-    languageCompartment.of(getLanguageExtensions(lang)),
+    languageCompartment.of(getLanguageExtensionsSync(lang)),
     themeCompartment.of(getThemeExtension(theme)),
     fontSizeCompartment.of(
       EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
     ),
     readOnlyCompartment.of(EditorView.editable.of(!readOnly)),
   ];
+
+  if (!largeFileOptimize) {
+    exts.push(
+      foldGutter(),
+      keymap.of(foldKeymap),
+      bracketMatching()
+    );
+  }
+
+  return exts;
 }
 
 const CmEditor: React.FC<CmEditorProps> = ({
@@ -64,6 +76,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
   fontSize,
   readOnly = false,
   initialContent = '',
+  largeFileOptimize = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -84,12 +97,10 @@ const CmEditor: React.FC<CmEditorProps> = ({
     if (!container) return;
 
     let view = viewRef.current;
+    let cancelled = false;
 
     // Save previous tab's state before switching
     if (view) {
-      const prevState = view.state;
-      // Find which tab this view was showing (we track via a data attribute or last known tab)
-      // We handle this by destroying and recreating for simplicity in Phase 1
       view.destroy();
       viewRef.current = null;
     }
@@ -100,7 +111,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, theme, fontSize, readOnly),
+          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize),
           EditorView.updateListener.of((update) => {
             if (update.docChanged) {
               setEditorState(tabId, update.state);
@@ -120,7 +131,16 @@ const CmEditor: React.FC<CmEditorProps> = ({
     viewRef.current = view;
     setActiveView(tabId, view);
 
+    // Async load heavy language pack and apply when ready
+    loadLanguageExtensions(language).then((exts) => {
+      if (cancelled || !viewRef.current) return;
+      viewRef.current.dispatch({
+        effects: languageCompartment.reconfigure(exts),
+      });
+    }).catch(() => {});
+
     return () => {
+      cancelled = true;
       if (view) {
         setEditorState(tabId, view.state);
         setActiveView(tabId, null);
@@ -128,15 +148,26 @@ const CmEditor: React.FC<CmEditorProps> = ({
         viewRef.current = null;
       }
     };
-  }, [tabId, language, theme, fontSize, readOnly, initialContent]);
+  }, [tabId, language, theme, fontSize, readOnly, initialContent, largeFileOptimize]);
 
-  // Dynamic reconfiguration: language
+  // Dynamic reconfiguration: language (async load heavy packs)
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+
+    // Apply lightweight extension immediately
     view.dispatch({
-      effects: languageCompartment.reconfigure(getLanguageExtensions(language)),
+      effects: languageCompartment.reconfigure(getLanguageExtensionsSync(language)),
     });
+
+    // Then load heavy pack in background
+    loadLanguageExtensions(language).then((exts) => {
+      if (viewRef.current) {
+        viewRef.current.dispatch({
+          effects: languageCompartment.reconfigure(exts),
+        });
+      }
+    }).catch(() => {});
   }, [language]);
 
   // Dynamic reconfiguration: theme

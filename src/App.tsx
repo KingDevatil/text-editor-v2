@@ -533,6 +533,7 @@ function App() {
                     onChange={handleEditorChange(group1Tab.id)}
                     fontSize={fontSize}
                     initialContent={group1Tab.initialContent || ''}
+                    largeFileOptimize={largeFileOptimize}
                   />
                 </div>
                 {splitMode && (
@@ -547,6 +548,7 @@ function App() {
                           onChange={handleEditorChange(activeGroup2TabId)}
                           fontSize={fontSize}
                           initialContent={tabs.find((t) => t.id === activeGroup2TabId)?.initialContent || ''}
+                          largeFileOptimize={largeFileOptimize}
                         />
                       ) : (
                         <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-600 bg-white dark:bg-gray-900">

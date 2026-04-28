@@ -2,7 +2,7 @@ import { EditorState, type Extension } from '@codemirror/state';
 import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLineGutter, highlightActiveLine } from '@codemirror/view';
 import { defaultKeymap, history, historyKeymap } from '@codemirror/commands';
 import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
-import { getLanguageExtensions } from '../utils/languageExtensions';
+import { getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { getThemeExtension, type EditorTheme } from '../utils/themes';
 import type { Language } from '../types';
 
@@ -33,7 +33,7 @@ function createBaseExtensions(
     }),
   ];
 
-  const langExts = getLanguageExtensions(language);
+  const langExts = getLanguageExtensionsSync(language);
   extensions.push(...langExts);
 
   if (readOnly) {
