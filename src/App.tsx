@@ -1,26 +1,27 @@
 import React, { useRef, useCallback, useEffect, useMemo, useState } from 'react';
-import { FilePlus, FolderOpen, Save, Search, Braces, PanelLeft, Sun, Moon, WrapText, Space, BookOpen, Columns2, GitCompare, X } from 'lucide-react';
+import { FilePlus, FolderOpen, Save, Search, Braces, PanelLeft, Sun, Moon, WrapText, Space, BookOpen, Columns2, GitCompare, X, Eye } from 'lucide-react';
 import { listen } from '@tauri-apps/api/event';
 import { invoke, isTauri } from '@tauri-apps/api/core';
 import { getCurrentWebview } from '@tauri-apps/api/webview';
 import { getCurrentWindow } from '@tauri-apps/api/window';
-import { open, confirm } from '@tauri-apps/plugin-dialog';
+import { open, confirm, message } from '@tauri-apps/plugin-dialog';
 import { useEditorStore } from './hooks/useEditorStore';
 import { useFileOpener } from './hooks/useFileOpener';
 import { getEditorContent, updateEditorContent, getActiveView } from './hooks/useEditorStatePool';
 import { formatDocument, goToDefinition } from './utils/cmCommands';
 import { perf } from './utils/perf';
 import type { Encoding } from './types';
-import type { EditorTheme } from './utils/themes';
 import Toolbar from './components/Toolbar';
 import TabBar from './components/TabBar';
 import FindReplace from './components/FindReplace';
 import StatusBar from './components/StatusBar';
 import Sidebar from './components/Sidebar';
 import MarkdownPreview from './components/MarkdownPreview';
+import MarkdownReader from './components/MarkdownReader';
 import CmEditor from './components/CmEditor';
 import DiffEditor from './components/DiffEditor';
 import CommandPalette from './components/CommandPalette';
+import TitleBar from './components/TitleBar';
 
 function App() {
   const tabs = useEditorStore((s) => s.tabs);
@@ -51,6 +52,7 @@ function App() {
   const diffMode = useEditorStore((s) => s.diffMode);
   const diffLeftTabId = useEditorStore((s) => s.diffLeftTabId);
   const diffRightTabId = useEditorStore((s) => s.diffRightTabId);
+  const readMode = useEditorStore((s) => s.readMode);
   const activeTab = useEditorStore((s) => s.tabs.find((t) => t.id === s.activeTabId) || null);
 
   const setActiveTabId = useEditorStore((s) => s.setActiveTabId);
@@ -75,6 +77,7 @@ function App() {
   const markTabSaved = useEditorStore((s) => s.markTabSaved);
   const renameTab = useEditorStore((s) => s.renameTab);
   const moveTabToGroup = useEditorStore((s) => s.moveTabToGroup);
+  const setReadMode = useEditorStore((s) => s.setReadMode);
 
   const openFile = useFileOpener();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -158,6 +161,21 @@ function App() {
       if (e.key === 'F1') {
         e.preventDefault();
         setCommandPaletteOpen((v) => !v);
+      }
+      // Read mode toggle: Ctrl+Shift+V
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'v') {
+        e.preventDefault();
+        const state = useEditorStore.getState();
+        if (state.readMode) {
+          setReadMode(false);
+        } else {
+          const tab = state.tabs.find((t) => t.id === state.activeTabId);
+          if (tab?.language === 'markdown') {
+            setReadMode(true);
+          } else {
+            console.warn('[ReadMode] 仅对 Markdown 文件可用');
+          }
+        }
       }
       // Go to definition shortcut (only intercept in Tauri; let F12 open DevTools in browser)
       if (e.key === 'F12' && isTauri()) {
@@ -341,12 +359,29 @@ function App() {
     closeTabs(ids);
   }, [closeTabs]);
 
+  const handleRenameTab = useCallback(async (tabId: string, newTitle: string) => {
+    const tab = tabs.find((t) => t.id === tabId);
+    if (!tab) return;
+
+    if (tab.filePath && isTauri()) {
+      try {
+        const { dirname, join } = await import('@tauri-apps/api/path');
+        const dir = await dirname(tab.filePath);
+        const newPath = await join(dir, newTitle);
+        await invoke('rename_file', { oldPath: tab.filePath, newPath });
+        renameTab(tabId, newTitle, newPath);
+      } catch (err) {
+        console.error('[Rename] 重命名文件失败:', err);
+        // 文件重命名失败，仍然更新标签标题
+        renameTab(tabId, newTitle);
+      }
+    } else {
+      renameTab(tabId, newTitle);
+    }
+  }, [tabs, renameTab]);
+
   const handleToggleTheme = useCallback(() => {
-    setTheme((prev) => {
-      const themes: EditorTheme[] = ['vs', 'vs-dark', 'sepia', 'hc-black'];
-      const idx = themes.indexOf(prev);
-      return themes[(idx + 1) % themes.length];
-    });
+    setTheme((prev) => (prev === 'vs' ? 'vs-dark' : 'vs'));
   }, [setTheme]);
 
   const handleEditorChange = useCallback(
@@ -382,7 +417,7 @@ function App() {
     [activeTab, setTabEncoding]
   );
 
-  const isDark = theme === 'vs-dark' || theme === 'hc-black';
+  const isDark = theme === 'vs-dark';
 
   // Handle file drop using Tauri native drag-drop events
   useEffect(() => {
@@ -501,27 +536,32 @@ function App() {
     }
   }, []);
 
-  const canFormat = activeTab
-    ? ['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql'].includes(activeTab.language)
-    : false;
+  const canFormat = !!activeTab;
 
-  const handleFormat = useCallback(() => {
+  const handleFormat = useCallback(async () => {
     if (!activeTab) {
-      console.warn('[Format] 没有打开的文件');
+      if (isTauri()) await message('没有打开的文件，请先打开或新建一个文件。', { title: '格式化' });
+      else alert('没有打开的文件，请先打开或新建一个文件。');
       return;
     }
     const view = getActiveView(activeTab.id);
     if (!view) {
-      console.error('[Format] no view for tab', activeTab.id);
-      console.warn('[Format] 无法获取编辑器实例，请尝试切换标签页后重试');
+      if (isTauri()) await message('无法获取编辑器实例，请尝试切换标签页后重试。', { title: '格式化' });
+      else alert('无法获取编辑器实例，请尝试切换标签页后重试。');
       return;
     }
-    const ok = formatDocument(view, activeTab.language);
-    console.log('[Format] result:', ok, 'language:', activeTab.language);
+    // Smart scope: selection if any, otherwise full document
+    const sel = view.state.selection.main;
+    const scope = (sel.from !== sel.to) ? 'selection' : 'full';
+    const ok = formatDocument(view, activeTab.language, scope);
     if (ok) {
       markTabDirty(activeTab.id, true);
     } else {
-      console.warn(`[Format] 格式化失败：${activeTab.language === 'json' ? 'JSON 格式不正确（检查是否有语法错误）' : '暂不支持该语言的格式化'}`);
+      const msg = scope === 'selection'
+        ? '格式化失败：请确保选区内容是有效的可格式化文本（如 JSON、XML、CSS、SQL 等）。'
+        : '格式化失败：当前文件类型暂不支持全文格式化，或 JSON 存在语法错误。';
+      if (isTauri()) await message(msg, { title: '格式化' });
+      else alert(msg);
     }
   }, [activeTab, markTabDirty]);
   handleFormatRef.current = handleFormat;
@@ -553,6 +593,20 @@ function App() {
     }
   }, []);
 
+  const handleToggleReadMode = useCallback(() => {
+    const state = useEditorStore.getState();
+    if (state.readMode) {
+      setReadMode(false);
+    } else {
+      const tab = state.tabs.find((t) => t.id === state.activeTabId);
+      if (tab?.language === 'markdown') {
+        setReadMode(true);
+      } else {
+        console.warn('[ReadMode] 仅对 Markdown 文件可用');
+      }
+    }
+  }, [setReadMode]);
+
   const group1Tab = tabs.find((t) => t.id === activeGroup1TabId);
   const canPreview = group1Tab?.language === 'markdown';
   const canSplit = tabs.length >= 2;
@@ -569,12 +623,25 @@ function App() {
     { id: 'wordwrap', label: wordWrap ? '关闭自动换行' : '开启自动换行', icon: <WrapText size={16} />, action: () => useEditorStore.getState().setWordWrap(!wordWrap) },
     { id: 'whitespace', label: showWhitespace ? '隐藏空白字符' : '显示空白字符', icon: <Space size={16} />, action: () => useEditorStore.getState().setShowWhitespace(!showWhitespace) },
     { id: 'preview', label: previewVisible ? '关闭 Markdown 预览' : '开启 Markdown 预览', icon: <BookOpen size={16} />, action: () => setPreviewVisible(!previewVisible) },
+    { id: 'readmode', label: readMode ? '退出阅读模式' : 'Markdown 阅读模式', shortcut: 'Ctrl+Shift+V', icon: <Eye size={16} />, action: handleToggleReadMode },
     { id: 'split', label: splitMode ? '关闭分屏' : '开启分屏', icon: <Columns2 size={16} />, action: handleToggleSplit },
     { id: 'diff', label: diffMode ? '退出对比' : '对比文件', icon: diffMode ? <X size={16} /> : <GitCompare size={16} />, action: handleToggleDiff },
-  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode, diffMode]);
+    ...(activeTab?.filePath ? [{
+      id: 'reveal',
+      label: '在文件夹中显示',
+      icon: <FolderOpen size={16} />,
+      action: async () => {
+        try {
+          await invoke('reveal_in_folder', { path: activeTab.filePath });
+        } catch (err) {
+          console.error('[Reveal] 打开文件夹失败:', err);
+        }
+      },
+    }] : []),
+  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, handleToggleReadMode, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode, diffMode, readMode, activeTab]);
 
   return (
-    <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`} data-theme={theme}>
+    <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -582,6 +649,8 @@ function App() {
         onChange={handleFileSelected}
         accept=".txt,.md,.js,.jsx,.mjs,.cjs,.ts,.tsx,.mts,.cts,.html,.htm,.xhtml,.css,.scss,.sass,.less,.json,.jsonc,.json5,.py,.pyw,.java,.cpp,.cc,.cxx,.c,.h,.hpp,.cs,.rs,.go,.mdx,.yml,.yaml,.xml,.svg,.wsdl,.xsd,.xsl,.xslt,.sql,.mysql,.pgsql,.sqlite,.ini,.cfg,.inf,.csv,.tsv,.env,.properties,.log,.sh,.bash,.zsh"
       />
+
+      <TitleBar title={activeTab ? activeTab.title : 'Text Editor'} isDark={isDark} />
 
       <Toolbar
         onNewFile={handleNewFile}
@@ -594,31 +663,44 @@ function App() {
         onFormat={handleFormat}
         onTogglePreview={() => setPreviewVisible(!previewVisible)}
         onToggleSplit={handleToggleSplit}
+        onToggleReadMode={handleToggleReadMode}
         canFormat={canFormat}
         canPreview={canPreview}
         previewActive={previewVisible}
         canSplit={canSplit}
         splitActive={splitMode}
+        canReadMode={!!activeTab && activeTab.language === 'markdown'}
+        readModeActive={readMode}
         theme={theme}
       />
 
       <div className="flex flex-1 overflow-hidden">
-        <Sidebar
-          visible={sidebarVisible}
-          width={SIDEBAR_WIDTH}
-          unicodeHighlight={unicodeHighlight}
-          onToggleUnicodeHighlight={() => setUnicodeHighlight(!unicodeHighlight)}
-          fontSize={fontSize}
-          onFontSizeChange={setFontSize}
-          largeFileOptimize={largeFileOptimize}
-          onToggleLargeFileOptimize={() => setLargeFileOptimize(!largeFileOptimize)}
-          projectPath={projectPath}
-          onProjectChange={setProjectPath}
-          onOpenFolder={handleOpenFolder}
-          openTabs={tabs}
-          onOpenFile={handleSidebarOpenFile}
-          onRegisterDefaultApp={handleRegisterDefaultApp}
-        />
+          <Sidebar
+            visible={sidebarVisible}
+            width={SIDEBAR_WIDTH}
+            unicodeHighlight={unicodeHighlight}
+            onToggleUnicodeHighlight={() => setUnicodeHighlight(!unicodeHighlight)}
+            fontSize={fontSize}
+            onFontSizeChange={setFontSize}
+            largeFileOptimize={largeFileOptimize}
+            onToggleLargeFileOptimize={() => setLargeFileOptimize(!largeFileOptimize)}
+            minimapVisible={minimapVisible}
+            onToggleMinimap={() => {
+              const next = !minimapVisible;
+              useEditorStore.getState().setMinimapVisible(next);
+            }}
+            wordWrap={wordWrap}
+            onToggleWordWrap={() => {
+              const next = !wordWrap;
+              useEditorStore.getState().setWordWrap(next);
+            }}
+            projectPath={projectPath}
+            onProjectChange={setProjectPath}
+            onOpenFolder={handleOpenFolder}
+            openTabs={tabs}
+            onOpenFile={handleSidebarOpenFile}
+            onRegisterDefaultApp={handleRegisterDefaultApp}
+          />
 
         <div className="flex flex-col flex-1 overflow-hidden">
           <TabBar
@@ -633,6 +715,7 @@ function App() {
             onNewFileInGroup={handleNewFileInGroup}
             onMoveTabToGroup={moveTabToGroup}
             onCloseTabs={handleCloseTabs}
+            onRenameTab={handleRenameTab}
           />
 
           <FindReplace
@@ -645,7 +728,7 @@ function App() {
             commands={commands}
           />
 
-          <div className="flex flex-1 overflow-hidden">
+          <div className="flex flex-1 overflow-hidden relative">
             {diffMode && diffLeftTabId && diffRightTabId ? (
               <DiffEditor
                 leftContent={getEditorContent(diffLeftTabId)}
@@ -667,6 +750,7 @@ function App() {
                     showWhitespace={showWhitespace}
                     scrollPastEnd={scrollPastEnd}
                     minimapVisible={minimapVisible}
+                    unicodeHighlight={unicodeHighlight}
                   />
                 </div>
                 {splitMode && (
@@ -686,6 +770,7 @@ function App() {
                           showWhitespace={showWhitespace}
                           scrollPastEnd={scrollPastEnd}
                           minimapVisible={minimapVisible}
+                          unicodeHighlight={unicodeHighlight}
                         />
                       ) : (
                         <div className="h-full flex items-center justify-center text-gray-400 dark:text-gray-600 bg-white dark:bg-gray-900">
@@ -711,6 +796,16 @@ function App() {
                   <p className="text-sm">点击"新建"或"打开"开始编辑</p>
                 </div>
               </div>
+            )}
+
+            {/* Markdown Read Mode — shown inside editor area only */}
+            {readMode && activeTab && activeTab.language === 'markdown' && (
+              <MarkdownReader
+                tabId={activeTab.id}
+                theme={theme}
+                onExit={() => setReadMode(false)}
+                onToggleTheme={handleToggleTheme}
+              />
             )}
           </div>
 
@@ -741,6 +836,7 @@ function App() {
           />
         </div>
       </div>
+
     </div>
   );
 }

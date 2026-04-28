@@ -8,11 +8,11 @@ import {
   Search,
   Sun,
   Moon,
-  
   PanelLeft,
   Braces,
   BookOpen,
   Columns2,
+  Eye,
 } from 'lucide-react';
 
 interface ToolbarProps {
@@ -26,11 +26,14 @@ interface ToolbarProps {
   onFormat: () => void;
   onTogglePreview: () => void;
   onToggleSplit: () => void;
+  onToggleReadMode: () => void;
   canFormat: boolean;
   canPreview: boolean;
   previewActive: boolean;
   canSplit: boolean;
   splitActive: boolean;
+  canReadMode: boolean;
+  readModeActive: boolean;
   theme: string;
 }
 
@@ -45,11 +48,14 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
   onFormat,
   onTogglePreview,
   onToggleSplit,
+  onToggleReadMode,
   canFormat,
   canPreview,
   previewActive,
   canSplit,
   splitActive,
+  canReadMode,
+  readModeActive,
   theme,
 }) => {
   const btnClass =
@@ -60,16 +66,8 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
 
   const dividerClass = 'w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1';
 
-  // Show icon of the NEXT theme that clicking will switch to
-  const nextThemeIcon = (() => {
-    if (theme === 'vs') return <Moon size={16} />;   // next: dark
-    return <Sun size={16} />;                         // next: light
-  })();
-
-  const nextThemeLabel = (() => {
-    if (theme === 'vs') return '切换暗色主题';
-    return '切换亮色主题';
-  })();
+  const nextThemeIcon = theme === 'vs' ? <Moon size={16} /> : <Sun size={16} />;
+  const nextThemeLabel = theme === 'vs' ? '切换暗色主题' : '切换亮色主题';
 
   return (
     <div className="flex items-center gap-1 px-3 h-11 border-b border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900">
@@ -134,6 +132,15 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
         >
           <BookOpen size={16} />
           <span className="hidden sm:inline font-medium">预览</span>
+        </button>
+        <button
+          className={`${btnClass} ${!canReadMode ? 'opacity-40 cursor-not-allowed active:scale-100' : ''} ${readModeActive ? activeBtnClass : ''}`}
+          onClick={onToggleReadMode}
+          disabled={!canReadMode}
+          title="Markdown 阅读模式 (Ctrl+Shift+V)"
+        >
+          <Eye size={16} />
+          <span className="hidden sm:inline font-medium">阅读</span>
         </button>
         <button
           className={`${btnClass} ${!canSplit || previewActive ? 'opacity-40 cursor-not-allowed active:scale-100' : ''} ${splitActive ? activeBtnClass : ''}`}

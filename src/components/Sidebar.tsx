@@ -12,6 +12,10 @@ interface SidebarProps {
   onFontSizeChange: (size: number) => void;
   largeFileOptimize: boolean;
   onToggleLargeFileOptimize: () => void;
+  minimapVisible: boolean;
+  onToggleMinimap: () => void;
+  wordWrap: boolean;
+  onToggleWordWrap: () => void;
   projectPath: string | null;
   onProjectChange: (path: string | null) => void;
   onOpenFolder: () => void;
@@ -111,6 +115,10 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
   onFontSizeChange,
   largeFileOptimize,
   onToggleLargeFileOptimize,
+  minimapVisible,
+  onToggleMinimap,
+  wordWrap,
+  onToggleWordWrap,
   projectPath,
   onProjectChange,
   onOpenFolder,
@@ -325,11 +333,21 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group">
                   <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">自动换行</span>
-                  <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                  <input
+                    type="checkbox"
+                    checked={wordWrap}
+                    onChange={onToggleWordWrap}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group">
                   <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">迷你地图</span>
-                  <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                  <input
+                    type="checkbox"
+                    checked={minimapVisible}
+                    onChange={onToggleMinimap}
+                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                  />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group" title="打开大文件时自动禁用高亮、折叠等功能以提升性能">
                   <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">大文件性能优化</span>

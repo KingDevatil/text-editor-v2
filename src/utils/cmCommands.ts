@@ -47,103 +47,176 @@ export function goToDefinition(view: EditorView): boolean {
 }
 
 /**
- * Format JSON content in the active editor view.
- * If text is selected, format only the selection.
+ * Detect the format of a text snippet by its content.
+ * Supports fragments (e.g. a single line from a JSON file, multi-line selections).
  */
-export function formatJSON(view: EditorView): boolean {
-  const { state } = view;
-  const selection = state.selection.main;
+function detectFormat(text: string): string | null {
+  const trimmed = text.trim();
+  if (!trimmed) return null;
 
-  // Determine the range to format
-  let from = selection.from;
-  let to = selection.to;
-  let formatAll = from === to;
-
-  if (formatAll) {
-    from = 0;
-    to = state.doc.length;
+  // JSON: starts with { or [, or contains typical JSON patterns
+  if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+    if (trimmed.length > 2) {
+      try {
+        JSON.parse(trimmed);
+        return 'json';
+      } catch {
+        // not valid JSON as-is, but may still be JSON-like
+      }
+    }
   }
 
-  const text = state.doc.sliceString(from, to);
+  // JSON fragment detection: contains key-value pairs with quotes and colons
+  if (/"[^"]+":\s*"/.test(trimmed) || /"[^"]+":\s*[\[{\d]/.test(trimmed)) {
+    // Try wrapping in { } or [ ] and parsing
+    const candidates = [`{${trimmed}}`, `[${trimmed}]`, trimmed];
+    for (const candidate of candidates) {
+      try {
+        JSON.parse(candidate);
+        return 'json';
+      } catch {
+        // try next
+      }
+    }
+  }
 
-  try {
-    // Strip trailing commas before parsing (common in user-edited JSON)
-    const cleaned = text.replace(/,\s*([}\]])/g, '$1');
-    const parsed = JSON.parse(cleaned);
-    const formatted = JSON.stringify(parsed, null, 2);
+  // XML / HTML
+  if (trimmed.startsWith('<') || trimmed.includes('</') || trimmed.includes('/>')) return 'xml';
 
-    view.dispatch({
-      changes: { from, to, insert: formatted },
-      selection: EditorSelection.cursor(from + formatted.length),
-    });
-    return true;
-  } catch (err) {
-    console.error('[formatJSON] Failed to parse JSON:', err);
+  // SQL
+  if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|JOIN|WHERE|FROM|TABLE|INDEX)\b/i.test(trimmed)) return 'sql';
+
+  // CSS
+  if (/[a-zA-Z0-9_\-#.:*\[\]]+\s*\{/.test(trimmed) && trimmed.includes(':')) return 'css';
+
+  return null;
+}
+
+/**
+ * Dispatch a format command based on the current language or selection content.
+ * @param scope 'full' = entire document, 'selection' = selected text only (falls back to current line if no selection)
+ * Returns true if formatting was applied.
+ */
+export function formatDocument(view: EditorView, language: string, scope: 'full' | 'selection' = 'full'): boolean {
+  const { state } = view;
+  const sel = state.selection.main;
+  const hasSelection = sel.from !== sel.to;
+
+  // For 'selection' scope: if nothing selected, try to expand to the current line
+  let from = sel.from;
+  let to = sel.to;
+
+  if (scope === 'selection') {
+    if (!hasSelection) {
+      // No selection — expand to the current line
+      const line = state.doc.lineAt(sel.from);
+      from = line.from;
+      to = line.to;
+    }
+    const text = state.doc.sliceString(from, to).trim();
+    if (!text) return false;
+
+    // Try current language first
+    const ok = tryFormat(view, language, from, to);
+    if (ok) return true;
+
+    // Fallback: detect format from content
+    const detected = detectFormat(text);
+    if (detected) {
+      return tryFormat(view, detected, from, to);
+    }
     return false;
   }
+
+  // 'full' scope: format entire document
+  const fullOk = tryFormat(view, language, 0, state.doc.length);
+  if (fullOk) return true;
+
+  // Fallback: if current language doesn't support formatting, try to detect from full document
+  const fullText = state.doc.toString().trim();
+  if (fullText) {
+    const detected = detectFormat(fullText);
+    if (detected) {
+      return tryFormat(view, detected, 0, state.doc.length);
+    }
+  }
+
+  return false;
 }
 
-/**
- * Format SQL-like content: uppercase keywords, basic indentation.
- * Lightweight — not a full SQL parser.
- */
-export function formatSQL(view: EditorView): boolean {
-  const { state } = view;
-  const text = state.doc.toString();
+function tryFormat(view: EditorView, format: string, from: number, to: number): boolean {
+  const text = view.state.doc.sliceString(from, to);
 
-  const keywords = [
-    'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE',
-    'TABLE', 'DROP', 'ALTER', 'INDEX', 'JOIN', 'LEFT', 'RIGHT', 'INNER',
-    'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'HAVING', 'LIMIT', 'OFFSET',
-    'AND', 'OR', 'NOT', 'NULL', 'IS', 'IN', 'EXISTS', 'BETWEEN', 'LIKE',
-    'AS', 'DISTINCT', 'UNION', 'ALL', 'VALUES', 'SET', 'INTO',
-  ];
-
-  const keywordRegex = new RegExp(
-    `\\b(${keywords.join('|')})\\b`,
-    'gi'
-  );
-
-  // Simple formatting: uppercase keywords, add newline after semicolons
-  let formatted = text
-    .replace(keywordRegex, (match) => match.toUpperCase())
-    .replace(/;/g, ';\n')
-    .replace(/\n\s*\n/g, '\n') // collapse multiple newlines
-    .trim();
-
-  view.dispatch({
-    changes: { from: 0, to: state.doc.length, insert: formatted },
-    selection: EditorSelection.cursor(0),
-  });
-  return true;
+  switch (format) {
+    case 'json': {
+      const cleaned = text.replace(/,\s*([}\]])/g, '$1');
+      try {
+        const parsed = JSON.parse(cleaned);
+        const formatted = JSON.stringify(parsed, null, 2);
+        view.dispatch({
+          changes: { from, to, insert: formatted },
+          selection: EditorSelection.cursor(from + formatted.length),
+        });
+        return true;
+      } catch {
+        return false;
+      }
+    }
+    case 'xml':
+    case 'html': {
+      const formatted = formatXMLText(text);
+      if (formatted === null) return false;
+      view.dispatch({
+        changes: { from, to, insert: formatted },
+        selection: EditorSelection.cursor(from + formatted.length),
+      });
+      return true;
+    }
+    case 'sql': {
+      const formatted = formatSQLText(text);
+      view.dispatch({
+        changes: { from, to, insert: formatted },
+        selection: EditorSelection.cursor(from + formatted.length),
+      });
+      return true;
+    }
+    case 'css': {
+      const formatted = formatCSText(text);
+      if (formatted === null) return false;
+      view.dispatch({
+        changes: { from, to, insert: formatted },
+        selection: EditorSelection.cursor(from + formatted.length),
+      });
+      return true;
+    }
+    case 'javascript':
+    case 'typescript': {
+      const formatted = formatJSText(text);
+      if (formatted === null) return false;
+      view.dispatch({
+        changes: { from, to, insert: formatted },
+        selection: EditorSelection.cursor(from + formatted.length),
+      });
+      return true;
+    }
+    default:
+      return false;
+  }
 }
 
-/**
- * Format XML/HTML: basic indentation via a simple tag stack.
- * Not a full formatter — handles common cases.
- */
-export function formatXML(view: EditorView): boolean {
-  const { state } = view;
-  const text = state.doc.toString();
-
+function formatXMLText(text: string): string | null {
   let formatted = '';
   let indent = 0;
   const indentStr = '  ';
-
-  // Split by tags while preserving them
   const tokens = text.split(/(<\/?[^>]+>)/g);
-
   for (const token of tokens) {
     if (!token) continue;
     const trimmed = token.trim();
     if (!trimmed) continue;
-
     if (trimmed.startsWith('</')) {
-      // Closing tag
       indent = Math.max(0, indent - 1);
       formatted += indentStr.repeat(indent) + trimmed + '\n';
     } else if (trimmed.startsWith('<')) {
-      // Opening or self-closing tag
       if (!trimmed.endsWith('/>') && !trimmed.match(/<(br|hr|img|input|meta|link|area|base|col|embed|param|source|track|wbr)/i)) {
         formatted += indentStr.repeat(indent) + trimmed + '\n';
         indent++;
@@ -151,38 +224,40 @@ export function formatXML(view: EditorView): boolean {
         formatted += indentStr.repeat(indent) + trimmed + '\n';
       }
     } else {
-      // Text content
       const lines = trimmed.split(/\n/).filter((l) => l.trim());
       for (const line of lines) {
         formatted += indentStr.repeat(indent) + line.trim() + '\n';
       }
     }
   }
-
-  view.dispatch({
-    changes: { from: 0, to: state.doc.length, insert: formatted.trim() + '\n' },
-    selection: EditorSelection.cursor(0),
-  });
-  return true;
+  return formatted.trim() + '\n';
 }
 
-/**
- * Simple CSS formatter: adds newlines and indentation around braces/semicolons.
- */
-function formatCSS(view: EditorView): boolean {
-  const { state } = view;
-  const text = state.doc.toString();
+function formatSQLText(text: string): string {
+  const keywords = [
+    'SELECT', 'FROM', 'WHERE', 'INSERT', 'UPDATE', 'DELETE', 'CREATE',
+    'TABLE', 'DROP', 'ALTER', 'INDEX', 'JOIN', 'LEFT', 'RIGHT', 'INNER',
+    'OUTER', 'ON', 'GROUP', 'BY', 'ORDER', 'HAVING', 'LIMIT', 'OFFSET',
+    'AND', 'OR', 'NOT', 'NULL', 'IS', 'IN', 'EXISTS', 'BETWEEN', 'LIKE',
+    'AS', 'DISTINCT', 'UNION', 'ALL', 'VALUES', 'SET', 'INTO',
+  ];
+  const keywordRegex = new RegExp(`\\b(${keywords.join('|')})\\b`, 'gi');
+  return text
+    .replace(keywordRegex, (match) => match.toUpperCase())
+    .replace(/;/g, ';\n')
+    .replace(/\n\s*\n/g, '\n')
+    .trim();
+}
 
+function formatCSText(text: string): string | null {
   let result = '';
   let indent = 0;
   const indentStr = '  ';
   let inString = false;
   let stringChar = '';
   let escaped = false;
-
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
-
     if (inString) {
       if (escaped) escaped = false;
       else if (ch === '\\') escaped = true;
@@ -190,14 +265,12 @@ function formatCSS(view: EditorView): boolean {
       result += ch;
       continue;
     }
-
     if (ch === '"' || ch === "'") {
       inString = true;
       stringChar = ch;
       result += ch;
       continue;
     }
-
     if (ch === '{') {
       result += ' ' + ch + '\n' + indentStr.repeat(++indent);
     } else if (ch === '}') {
@@ -212,22 +285,10 @@ function formatCSS(view: EditorView): boolean {
       result += ch;
     }
   }
-
-  view.dispatch({
-    changes: { from: 0, to: state.doc.length, insert: result.trim() },
-    selection: EditorSelection.cursor(0),
-  });
-  return true;
+  return result.trim();
 }
 
-/**
- * Simple JS/TS formatter: basic brace/semicolon indentation.
- * Not a full formatter — safe for object literals and simple scripts.
- */
-function formatJS(view: EditorView): boolean {
-  const { state } = view;
-  const text = state.doc.toString();
-
+function formatJSText(text: string): string | null {
   let result = '';
   let indent = 0;
   const indentStr = '  ';
@@ -236,11 +297,9 @@ function formatJS(view: EditorView): boolean {
   let escaped = false;
   let inLineComment = false;
   let inBlockComment = false;
-
   for (let i = 0; i < text.length; i++) {
     const ch = text[i];
     const next = text[i + 1] || '';
-
     if (inLineComment) {
       result += ch;
       if (ch === '\n') {
@@ -249,7 +308,6 @@ function formatJS(view: EditorView): boolean {
       }
       continue;
     }
-
     if (inBlockComment) {
       result += ch;
       if (ch === '*' && next === '/') {
@@ -259,7 +317,6 @@ function formatJS(view: EditorView): boolean {
       }
       continue;
     }
-
     if (inString) {
       if (escaped) escaped = false;
       else if (ch === '\\') escaped = true;
@@ -267,26 +324,22 @@ function formatJS(view: EditorView): boolean {
       result += ch;
       continue;
     }
-
     if (ch === '"' || ch === "'" || ch === '`') {
       inString = true;
       stringChar = ch;
       result += ch;
       continue;
     }
-
     if (ch === '/' && next === '/') {
       inLineComment = true;
       result += ch;
       continue;
     }
-
     if (ch === '/' && next === '*') {
       inBlockComment = true;
       result += ch;
       continue;
     }
-
     if (ch === '{' || ch === '[') {
       result += ch + '\n' + indentStr.repeat(++indent);
     } else if (ch === '}' || ch === ']') {
@@ -303,33 +356,5 @@ function formatJS(view: EditorView): boolean {
       result += ch;
     }
   }
-
-  view.dispatch({
-    changes: { from: 0, to: state.doc.length, insert: result.trim() },
-    selection: EditorSelection.cursor(0),
-  });
-  return true;
-}
-
-/**
- * Dispatch a format command based on the current language.
- * Returns true if formatting was applied.
- */
-export function formatDocument(view: EditorView, language: string): boolean {
-  switch (language) {
-    case 'json':
-      return formatJSON(view);
-    case 'xml':
-    case 'html':
-      return formatXML(view);
-    case 'sql':
-      return formatSQL(view);
-    case 'css':
-      return formatCSS(view);
-    case 'javascript':
-    case 'typescript':
-      return formatJS(view);
-    default:
-      return false;
-  }
+  return result.trim();
 }

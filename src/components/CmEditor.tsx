@@ -1,10 +1,11 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
-import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, WrapText, Space, GitCompare, X, FileMinus, Crosshair } from 'lucide-react';
+import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, WrapText, Space, GitCompare, X, FileMinus, Crosshair, FolderOpen } from 'lucide-react';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt } from '@codemirror/view';
 import { EditorState, Compartment, type Extension } from '@codemirror/state';
-import { defaultKeymap, history, historyKeymap, undo, redo, selectAll } from '@codemirror/commands';
-import { searchKeymap, highlightSelectionMatches } from '@codemirror/search';
+import { defaultKeymap, history, historyKeymap, undo, redo, selectAll, indentMore, indentLess } from '@codemirror/commands';
+import { highlightSelectionMatches } from '@codemirror/search';
 import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
+import { unicodeHighlight as unicodeHighlightExt } from '../utils/unicodeHighlight';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { getThemeExtension, syntaxHighlightExtension, type EditorTheme } from '../utils/themes';
 import { formatDocument } from '../utils/cmCommands';
@@ -40,6 +41,7 @@ interface CmEditorProps {
   showWhitespace?: boolean;
   scrollPastEnd?: boolean;
   minimapVisible?: boolean;
+  unicodeHighlight?: boolean;
 }
 
 // Compartments allow dynamic reconfiguration without recreating the state.
@@ -49,6 +51,8 @@ const fontSizeCompartment = new Compartment();
 const readOnlyCompartment = new Compartment();
 const lintCompartment = new Compartment();
 const autocompleteCompartment = new Compartment();
+const wordWrapCompartment = new Compartment();
+const unicodeHighlightCompartment = new Compartment();
 
 const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql']);
 
@@ -90,15 +94,18 @@ function buildBaseExtensions(
   showWhitespace: boolean,
   enableScrollPastEnd: boolean,
   tabId: string,
+  enableUnicodeHighlight: boolean,
 ): Extension[] {
   const exts: Extension[] = [
     history(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
+    keymap.of([
+      { key: 'Tab', run: indentMore, shift: indentLess },
+    ]),
     lineNumbers(),
     highlightActiveLineGutter(),
     highlightActiveLine(),
     highlightSelectionMatches(),
-    keymap.of(searchKeymap),
     syntaxHighlightExtension,
     languageCompartment.of(getLanguageExtensionsSync(lang)),
     themeCompartment.of(getThemeExtension(theme)),
@@ -106,6 +113,8 @@ function buildBaseExtensions(
       EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
     ),
     readOnlyCompartment.of(EditorView.editable.of(!readOnly)),
+    wordWrapCompartment.of(wordWrap ? EditorView.lineWrapping : []),
+    unicodeHighlightCompartment.of(enableUnicodeHighlight ? [...unicodeHighlightExt] : []),
   ];
 
   if (!largeFileOptimize) {
@@ -116,9 +125,6 @@ function buildBaseExtensions(
     );
   }
 
-  if (wordWrap) {
-    exts.push(EditorView.lineWrapping);
-  }
   if (showWhitespace) {
     exts.push(highlightWhitespace(), highlightTrailingWhitespace());
   }
@@ -149,6 +155,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
   showWhitespace = false,
   scrollPastEnd: enableScrollPastEnd = true,
   minimapVisible = true,
+  unicodeHighlight: enableUnicodeHighlight = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const viewRef = useRef<EditorView | null>(null);
@@ -185,7 +192,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId),
+          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId, enableUnicodeHighlight),
           EditorView.updateListener.of((update) => {
             // Always save state to pool so that effects (language/theme changes)
             // are persisted, not just doc changes.
@@ -331,6 +338,26 @@ const CmEditor: React.FC<CmEditorProps> = ({
     setEditorState(tabId, view.state);
   }, [readOnly, tabId]);
 
+  // Dynamic reconfiguration: word wrap
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: wordWrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
+    });
+    setEditorState(tabId, view.state);
+  }, [wordWrap, tabId]);
+
+  // Dynamic reconfiguration: unicode highlight
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: unicodeHighlightCompartment.reconfigure(enableUnicodeHighlight ? [...unicodeHighlightExt] : []),
+    });
+    setEditorState(tabId, view.state);
+  }, [enableUnicodeHighlight, tabId]);
+
   // Build context menu items based on current editor state
   const buildMenuItems = useCallback((): ContextMenuItem[] => {
     const view = viewRef.current;
@@ -425,11 +452,13 @@ const CmEditor: React.FC<CmEditorProps> = ({
       { id: 'divider-3', label: '', icon: null, divider: true, action: () => {} },
       {
         id: 'format',
-        label: '格式化',
+        label: hasSelection ? '格式化选区' : '格式化本行',
         icon: <Braces size={14} />,
         shortcut: 'Shift+Alt+F',
-        disabled: !canFormat,
-        action: () => formatDocument(view, language),
+        action: () => {
+          const ok = formatDocument(view, language, 'selection');
+          if (!ok) console.warn('[Format] 格式化失败：请确保选区内容是有效的可格式化文本');
+        },
       },
     ];
 
@@ -464,6 +493,45 @@ const CmEditor: React.FC<CmEditorProps> = ({
           },
         });
       }
+    }
+
+    // Reveal in folder
+    const currentTab = store.tabs.find((t) => t.id === tabId);
+    if (currentTab?.filePath) {
+      items.push(
+        { id: 'divider-reveal', label: '', icon: null, divider: true, action: () => {} },
+        {
+          id: 'reveal-in-folder',
+          label: '在文件夹中显示',
+          icon: <FolderOpen size={14} />,
+          action: async () => {
+            if (currentTab.filePath) {
+              try {
+                const { invoke } = await import('@tauri-apps/api/core');
+                await invoke('reveal_in_folder', { path: currentTab.filePath });
+              } catch (err) {
+                console.error('[Reveal] 打开文件夹失败:', err);
+              }
+            }
+          },
+        }
+      );
+    }
+
+    // Exit diff mode
+    if (isDiffMode) {
+      items.push(
+        { id: 'divider-diff', label: '', icon: null, divider: true, action: () => {} },
+        {
+          id: 'exit-diff',
+          label: '退出对比',
+          icon: <GitCompare size={14} />,
+          action: () => {
+            store.setDiffMode(false);
+            store.setDiffPair(null, null);
+          },
+        }
+      );
     }
 
     // View toggles
@@ -508,7 +576,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
   }, [handleContextMenu]);
 
   return (
-    <div className="flex w-full h-full overflow-hidden">
+    <div className={`flex w-full h-full overflow-hidden ${minimapVisible ? 'hide-scrollbar' : ''}`}>
       <div
         ref={containerRef}
         className="flex-1 h-full overflow-hidden"

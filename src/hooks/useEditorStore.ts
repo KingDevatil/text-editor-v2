@@ -19,7 +19,7 @@ interface EditorState {
   activeTabId: string | null;
   activeGroup1TabId: string | null;
   activeGroup2TabId: string | null;
-  theme: 'vs' | 'vs-dark' | 'sepia' | 'hc-black';
+  theme: 'vs' | 'vs-dark';
   sidebarVisible: boolean;
   findReplaceVisible: boolean;
   unicodeHighlight: boolean;
@@ -45,7 +45,7 @@ interface EditorActions {
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
   setActiveGroup2TabId: (id: string | null) => void;
-  setTheme: (theme: 'vs' | 'vs-dark' | 'sepia' | 'hc-black' | ((prev: 'vs' | 'vs-dark' | 'sepia' | 'hc-black') => 'vs' | 'vs-dark' | 'sepia' | 'hc-black')) => void;
+  setTheme: (theme: 'vs' | 'vs-dark' | ((prev: 'vs' | 'vs-dark') => 'vs' | 'vs-dark')) => void;
   setSidebarVisible: (visible: boolean) => void;
   setFindReplaceVisible: (visible: boolean) => void;
   setUnicodeHighlight: (highlight: boolean) => void;
@@ -66,6 +66,8 @@ interface EditorActions {
   diffRightTabId: string | null;
   setDiffMode: (mode: boolean) => void;
   setDiffPair: (left: string | null, right: string | null) => void;
+  readMode: boolean;
+  setReadMode: (mode: boolean) => void;
   customKeybindings: Record<string, string>;
   setCustomKeybinding: (command: string, key: string) => void;
   resetKeybindings: () => void;
@@ -92,6 +94,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   diffMode: false,
   diffLeftTabId: null,
   diffRightTabId: null,
+  readMode: false,
   customKeybindings: {},
 
   createTab: (title = 'Untitled', language, filePath, group = 1, encoding = 'UTF-8', initialContent = '') => {
@@ -273,14 +276,19 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
       const hasGroup2 = state.tabs.some((t) => t.group === 2);
       let nextTabs = state.tabs;
       let nextActiveGroup2Id = state.activeGroup2TabId;
+      let nextActiveGroup1Id = state.activeGroup1TabId;
       if (!hasGroup2 && state.tabs.length >= 2 && state.activeTabId) {
+        // Move current active tab to group2, and pick another tab for group1
         nextTabs = state.tabs.map((t) => (t.id === state.activeTabId ? { ...t, group: 2 as 2 } : t));
         nextActiveGroup2Id = state.activeTabId;
+        const g1Tabs = nextTabs.filter((t) => t.id !== state.activeTabId && (t.group === 1 || !t.group));
+        nextActiveGroup1Id = g1Tabs[g1Tabs.length - 1]?.id || null;
       }
       return {
         splitMode: true,
         previewVisible: false,
         tabs: nextTabs,
+        activeGroup1TabId: nextActiveGroup1Id,
         activeGroup2TabId: nextActiveGroup2Id || state.activeTabId,
       };
     });
@@ -311,6 +319,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   setMinimapVisible: (visible) => set({ minimapVisible: visible }),
   setDiffMode: (mode) => set({ diffMode: mode }),
   setDiffPair: (left, right) => set({ diffLeftTabId: left, diffRightTabId: right }),
+  setReadMode: (mode) => set({ readMode: mode }),
   setCustomKeybinding: (command, key) =>
     set((state) => ({
       customKeybindings: { ...state.customKeybindings, [command]: key },

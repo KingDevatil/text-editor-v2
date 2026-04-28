@@ -484,6 +484,32 @@ fn register_as_default_app() -> Result<String, String> {
     }
 }
 
+#[tauri::command]
+fn window_minimize(window: tauri::Window) -> Result<(), String> {
+    window.minimize().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn window_maximize(window: tauri::Window) -> Result<bool, String> {
+    if window.is_maximized().map_err(|e| e.to_string())? {
+        window.unmaximize().map_err(|e| e.to_string())?;
+        Ok(false)
+    } else {
+        window.maximize().map_err(|e| e.to_string())?;
+        Ok(true)
+    }
+}
+
+#[tauri::command]
+fn window_close(window: tauri::Window) -> Result<(), String> {
+    window.close().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn rename_file(old_path: String, new_path: String) -> Result<(), String> {
+    fs::rename(&old_path, &new_path).map_err(|e| format!("重命名文件失败: {}", e))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     // Collect startup file paths from command line arguments
@@ -544,6 +570,10 @@ pub fn run() {
             get_pending_files,
             reveal_in_folder,
             register_as_default_app,
+            window_minimize,
+            window_maximize,
+            window_close,
+            rename_file,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

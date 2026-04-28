@@ -18,7 +18,7 @@
         "resizable": true,
         "fullscreen": false,
         "center": true,
-        "decorations": true,
+        "decorations": false,
         "devtools": true,
         "visible": false
       }
@@ -39,7 +39,12 @@
             "core:default",
             "core:window:allow-close",
             "core:window:allow-destroy",
-            "core:window:allow-show"
+            "core:window:allow-show",
+            "core:window:allow-minimize",
+            "core:window:allow-maximize",
+            "core:window:allow-unmaximize",
+            "core:window:allow-is-maximized",
+            "core:window:allow-start-dragging"
           ]
         }
       ]

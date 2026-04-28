@@ -125,14 +125,16 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
     };
   }, [viewRef, theme]);
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent) => {
+  const isDraggingRef = useRef(false);
+
+  const scrollToY = useCallback(
+    (clientY: number) => {
       const view = viewRef.current;
       const container = containerRef.current;
       if (!view || !container) return;
 
       const rect = container.getBoundingClientRect();
-      const y = e.clientY - rect.top;
+      const y = clientY - rect.top;
       const ratio = Math.max(0, Math.min(1, y / rect.height));
       const targetLine = Math.floor(ratio * view.state.doc.lines) + 1;
       const line = view.state.doc.line(
@@ -147,6 +149,45 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
     [viewRef]
   );
 
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      isDraggingRef.current = true;
+      scrollToY(e.clientY);
+    },
+    [scrollToY]
+  );
+
+  const handleWheel = useCallback(
+    (e: React.WheelEvent) => {
+      const view = viewRef.current;
+      if (!view) return;
+      // Forward wheel delta to the editor scroller
+      const scroller = view.dom.querySelector('.cm-scroller') as HTMLElement | null;
+      if (scroller) {
+        scroller.scrollTop += e.deltaY;
+      }
+    },
+    [viewRef]
+  );
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingRef.current) return;
+      e.preventDefault();
+      scrollToY(e.clientY);
+    };
+    const handleMouseUp = () => {
+      isDraggingRef.current = false;
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [scrollToY]);
+
   return (
     <div
       ref={containerRef}
@@ -157,8 +198,9 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
             ? 'rgba(255,255,255,0.06)'
             : 'rgba(0,0,0,0.06)',
       }}
-      onClick={handleClick}
-      title="点击跳转到对应位置"
+      onMouseDown={handleMouseDown}
+      onWheel={handleWheel}
+      title="拖动或点击跳转到对应位置"
     >
       <canvas ref={canvasRef} className="w-full h-full block" />
     </div>

@@ -3,10 +3,10 @@ import { RangeSetBuilder } from '@codemirror/state';
 
 const INDENT_GUIDE_THEME = EditorView.theme({
   '.cm-indent-guide': {
-    borderRight: '1px solid rgba(128, 128, 128, 0.12)',
+    borderRight: '1px solid rgba(128, 128, 128, 0.22)',
   },
   '.dark .cm-indent-guide': {
-    borderRight: '1px solid rgba(160, 160, 160, 0.15)',
+    borderRight: '1px solid rgba(160, 160, 160, 0.25)',
   },
 });
 

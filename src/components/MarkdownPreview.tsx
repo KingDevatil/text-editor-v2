@@ -48,7 +48,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     >
       <div
         className={`prose max-w-none ${isDark ? 'prose-invert' : ''}`}
-        style={{ color: isDark ? '#c9d1d9' : '#24292f' }}
+        style={{ color: isDark ? '#a0aab4' : '#24292f' }}
         dangerouslySetInnerHTML={{ __html: html }}
       />
     </div>

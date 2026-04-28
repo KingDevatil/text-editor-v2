@@ -15,6 +15,7 @@ interface TabBarProps {
   onNewFileInGroup?: (group: 1 | 2) => void;
   onMoveTabToGroup?: (tabId: string, group: 1 | 2) => void;
   onCloseTabs?: (tabIds: string[]) => void;
+  onRenameTab?: (tabId: string, newTitle: string) => void;
 }
 
 interface ScrollState {
@@ -37,6 +38,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   onNewFileInGroup,
   onMoveTabToGroup,
   onCloseTabs,
+  onRenameTab,
 }) => {
   const clickTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const g1ScrollRef = useRef<HTMLDivElement>(null);
@@ -51,6 +53,10 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     tabId: string;
     group: 1 | 2;
   } | null>(null);
+  const [renamingTab, setRenamingTab] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const renameInputRef = useRef<HTMLInputElement>(null);
+  const draggedTabIdRef = useRef<string | null>(null);
 
   const checkScroll = useCallback((el: HTMLDivElement | null, setter: React.Dispatch<React.SetStateAction<ScrollState>>) => {
     if (!el) return;
@@ -86,14 +92,11 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       clickTimer.current = null;
     }
     const tab = tabs.find((t) => t.id === tabId);
-    if (tab?.isDirty) {
-      confirm(`"${tab.title}" 有未保存的更改，确定要关闭吗？`, { title: '未保存的更改' }).then((ok) => {
-        if (ok) onTabClose(tabId);
-      }).catch(() => onTabClose(tabId));
-      return;
-    }
-    onTabClose(tabId);
-  }, [onTabClose, tabs]);
+    if (!tab) return;
+    setRenamingTab(tabId);
+    setRenameValue(tab.title);
+    setTimeout(() => renameInputRef.current?.focus(), 10);
+  }, [tabs]);
 
   const handleTabClick = useCallback((tabId: string, group: 1 | 2) => {
     if (clickTimer.current) {
@@ -105,7 +108,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     clickTimer.current = setTimeout(() => {
       clickTimer.current = null;
       handleTabActivate(tabId, group);
-    }, 50);
+    }, 250);
   }, [handleTabActivate, handleTabDoubleClick]);
 
   useEffect(() => {
@@ -122,13 +125,32 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   }, [onNewFileInGroup]);
 
   const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
-    e.dataTransfer.setData('text/tab-id', tabId);
-    e.dataTransfer.effectAllowed = 'move';
+    draggedTabIdRef.current = tabId;
+    try {
+      if (e.dataTransfer) {
+        e.dataTransfer.effectAllowed = 'move';
+        e.dataTransfer.setData('text/plain', tabId);
+      }
+    } catch {
+      // ignore dataTransfer errors in some WebView environments
+    }
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent, group: 1 | 2) => {
     e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
+    setDragOverGroup(group);
+  }, []);
+
+  const handleDragEnter = useCallback((e: React.DragEvent, group: 1 | 2) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer) {
+      e.dataTransfer.dropEffect = 'move';
+    }
     setDragOverGroup(group);
   }, []);
 
@@ -143,8 +165,10 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
 
   const handleDrop = useCallback((e: React.DragEvent, group: 1 | 2) => {
     e.preventDefault();
+    e.stopPropagation();
     setDragOverGroup(null);
-    const tabId = e.dataTransfer.getData('text/tab-id');
+    const tabId = draggedTabIdRef.current;
+    draggedTabIdRef.current = null;
     if (tabId && onMoveTabToGroup) {
       onMoveTabToGroup(tabId, group);
     }
@@ -298,12 +322,40 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         {isActive && isGroupActive && (
           <div className="absolute top-0 left-2 right-2 h-[2px] bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" />
         )}
-        <span className={`truncate flex-1 ${isDirty ? 'italic' : ''}`}>
-          {isDirty && (
-            <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 align-middle" />
-          )}
-          {tab.title}
-        </span>
+        {renamingTab === tab.id ? (
+          <input
+            ref={renameInputRef}
+            value={renameValue}
+            onChange={(e) => setRenameValue(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.stopPropagation();
+                if (renameValue.trim() && onRenameTab) {
+                  onRenameTab(tab.id, renameValue.trim());
+                }
+                setRenamingTab(null);
+              } else if (e.key === 'Escape') {
+                e.stopPropagation();
+                setRenamingTab(null);
+              }
+            }}
+            onBlur={() => {
+              if (renameValue.trim() && onRenameTab) {
+                onRenameTab(tab.id, renameValue.trim());
+              }
+              setRenamingTab(null);
+            }}
+            onClick={(e) => e.stopPropagation()}
+            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-blue-400 text-gray-900 dark:text-gray-100"
+          />
+        ) : (
+          <span className={`truncate flex-1 ${isDirty ? 'italic' : ''}`}>
+            {isDirty && (
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 align-middle" />
+            )}
+            {tab.title}
+          </span>
+        )}
         <button
           onClick={(e) => {
             e.stopPropagation();
@@ -355,6 +407,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         onScroll={(e) => checkScroll(e.currentTarget, setter)}
         onDoubleClick={() => handleBlankDoubleClick(group)}
         onDragOver={(e) => handleDragOver(e, group)}
+        onDragEnter={(e) => handleDragEnter(e, group)}
         onDragLeave={handleDragLeave}
         onDrop={(e) => handleDrop(e, group)}
       >

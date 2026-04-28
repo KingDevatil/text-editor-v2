@@ -32,11 +32,25 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
   const activeTabId = useEditorStore((s) => s.activeTabId);
 
   useEffect(() => {
-    if (visible && findInputRef.current) {
-      findInputRef.current.focus();
-      findInputRef.current.select();
+    if (visible) {
+      const view = activeTabId ? getActiveView(activeTabId) : undefined;
+      if (view) {
+        const sel = view.state.selection.main;
+        if (sel.from !== sel.to) {
+          const text = view.state.doc.sliceString(sel.from, sel.to);
+          if (text.length <= 500) {
+            setFindText(text);
+          }
+        }
+      }
+      if (findInputRef.current) {
+        setTimeout(() => {
+          findInputRef.current?.focus();
+          findInputRef.current?.select();
+        }, 10);
+      }
     }
-  }, [visible]);
+  }, [visible, activeTabId]);
 
   // Debounced + limited match counting to avoid freezing on large files
   useEffect(() => {

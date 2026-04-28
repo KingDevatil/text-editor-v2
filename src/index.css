@@ -79,22 +79,29 @@ input, textarea, select {
   background: #6b7280;
 }
 
-/* Native selection color — light gray, works across all syntax highlight colors */
+/* Native selection color — slightly stronger so it stands out over match highlights */
 ::selection {
-  background-color: rgba(128, 128, 128, 0.25);
+  background-color: rgba(100, 100, 100, 0.35);
 }
 
 .dark ::selection {
-  background-color: rgba(160, 160, 160, 0.3);
+  background-color: rgba(180, 180, 180, 0.4);
 }
 
 /* Browser native ::selection in CM6 editor */
 .cm-content ::selection {
-  background-color: rgba(128, 128, 128, 0.25);
+  background-color: rgba(100, 100, 100, 0.35);
 }
 
 .dark .cm-content ::selection {
-  background-color: rgba(160, 160, 160, 0.3);
+  background-color: rgba(180, 180, 180, 0.4);
+}
+
+/* Force line-wrapping white-space in case CM6 default theme doesn't apply */
+.cm-lineWrapping {
+  white-space: pre-wrap !important;
+  word-break: break-word !important;
+  overflow-wrap: anywhere !important;
 }
 
 /* Range input styling */
@@ -172,6 +179,15 @@ input[type="range"]::-webkit-slider-thumb {
   scrollbar-width: none;
 }
 
+/* Hide native scrollbar when minimap is visible */
+.hide-scrollbar .cm-scroller {
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+.hide-scrollbar .cm-scroller::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Edge */
+}
+
 /* Tab dropdown animation */
 @keyframes tabDropdownIn {
   from {
@@ -225,41 +241,7 @@ input[type="range"]::-webkit-slider-thumb {
 .dark .tok-local         { color: #9cdcfe; }
 .dark .tok-function      { color: #dcdcaa; }
 
-/* Sepia theme — warm, readable palette */
-[data-theme="sepia"] .tok-keyword       { color: #8b4513; }
-[data-theme="sepia"] .tok-string        { color: #a0522d; }
-[data-theme="sepia"] .tok-number        { color: #556b2f; }
-[data-theme="sepia"] .tok-comment       { color: #6b8e23; font-style: italic; }
-[data-theme="sepia"] .tok-variableName  { color: #4a3728; }
-[data-theme="sepia"] .tok-typeName      { color: #2f4f4f; }
-[data-theme="sepia"] .tok-propertyName  { color: #4a3728; }
-[data-theme="sepia"] .tok-operator      { color: #5b4636; }
-[data-theme="sepia"] .tok-punctuation   { color: #5b4636; }
-[data-theme="sepia"] .tok-meta          { color: #8b4513; }
-[data-theme="sepia"] .tok-atom          { color: #8b4513; }
-[data-theme="sepia"] .tok-bool          { color: #8b4513; }
-[data-theme="sepia"] .tok-labelName     { color: #4a3728; }
-[data-theme="sepia"] .tok-definition    { color: #8b6914; }
-[data-theme="sepia"] .tok-local         { color: #4a3728; }
-[data-theme="sepia"] .tok-function      { color: #8b6914; }
 
-/* High-contrast dark theme */
-[data-theme="hc-black"] .tok-keyword       { color: #ffff00; }
-[data-theme="hc-black"] .tok-string        { color: #00ff00; }
-[data-theme="hc-black"] .tok-number        { color: #00ffff; }
-[data-theme="hc-black"] .tok-comment       { color: #00ff00; font-style: italic; }
-[data-theme="hc-black"] .tok-variableName  { color: #ffffff; }
-[data-theme="hc-black"] .tok-typeName      { color: #00ffff; }
-[data-theme="hc-black"] .tok-propertyName  { color: #ffffff; }
-[data-theme="hc-black"] .tok-operator      { color: #ffffff; }
-[data-theme="hc-black"] .tok-punctuation   { color: #ffffff; }
-[data-theme="hc-black"] .tok-meta          { color: #ffff00; }
-[data-theme="hc-black"] .tok-atom          { color: #ffff00; }
-[data-theme="hc-black"] .tok-bool          { color: #ffff00; }
-[data-theme="hc-black"] .tok-labelName     { color: #ffffff; }
-[data-theme="hc-black"] .tok-definition    { color: #ffff00; }
-[data-theme="hc-black"] .tok-local         { color: #ffffff; }
-[data-theme="hc-black"] .tok-function      { color: #ffff00; }
 
 /* ── Rounded Selection ─────────────────────────────────────────── */
 .cm-selectionBackground {
@@ -290,12 +272,32 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ── Bracket Pair Colorization ────────────────────────────────── */
 .cm-matchingBracket {
-  background-color: rgba(128, 128, 128, 0.12) !important;
+  background-color: rgba(128, 128, 128, 0.25) !important;
   border-radius: 2px;
 }
 
 .cm-nonmatchingBracket {
-  background-color: rgba(255, 0, 0, 0.15) !important;
+  background-color: rgba(255, 80, 80, 0.25) !important;
+  border-radius: 2px;
+}
+
+/* ── Selection match highlight (other occurrences of selected word) ── */
+.cm-selectionMatch {
+  background-color: rgba(128, 128, 128, 0.15);
+  border-radius: 2px;
+}
+
+.cm-selectionMatch-main {
+  background-color: rgba(128, 128, 128, 0.42);
+  border-radius: 2px;
+}
+
+.dark .cm-selectionMatch {
+  background-color: rgba(160, 160, 160, 0.15);
+}
+
+.dark .cm-selectionMatch-main {
+  background-color: rgba(160, 160, 160, 0.45);
   border-radius: 2px;
 }
 
@@ -371,3 +373,170 @@ input[type="range"]::-webkit-slider-thumb {
   color: #808080;
   border-color: rgba(255,255,255,0.08);
 }
+
+/* ── Markdown Reader Prose Overrides ──────────────────────────── */
+.reader-prose h1,
+.reader-prose h2,
+.reader-prose h3,
+.reader-prose h4,
+.reader-prose h5,
+.reader-prose h6 {
+  scroll-margin-top: 24px;
+}
+
+.reader-prose h1 {
+  font-size: 2em;
+  font-weight: 700;
+  margin-top: 0;
+  margin-bottom: 0.8em;
+  padding-bottom: 0.3em;
+  border-bottom: 1px solid rgba(128,128,128,0.2);
+}
+
+.reader-prose h2 {
+  font-size: 1.6em;
+  font-weight: 600;
+  margin-top: 1.6em;
+  margin-bottom: 0.6em;
+  padding-bottom: 0.25em;
+  border-bottom: 1px solid rgba(128,128,128,0.15);
+}
+
+.reader-prose h3 {
+  font-size: 1.35em;
+  font-weight: 600;
+  margin-top: 1.4em;
+  margin-bottom: 0.5em;
+}
+
+.reader-prose p {
+  margin-bottom: 1.1em;
+}
+
+.reader-prose blockquote {
+  border-left: 3px solid rgba(128,128,128,0.3);
+  padding-left: 1em;
+  margin-left: 0;
+  margin-right: 0;
+  font-style: italic;
+  opacity: 0.9;
+}
+
+.reader-prose pre {
+  background: rgba(128,128,128,0.08);
+  border-radius: 8px;
+  padding: 1em;
+  overflow-x: auto;
+  font-size: 0.88em;
+  line-height: 1.6;
+}
+
+.reader-prose code {
+  background: rgba(128,128,128,0.1);
+  padding: 0.15em 0.35em;
+  border-radius: 4px;
+  font-size: 0.9em;
+}
+
+.reader-prose pre code {
+  background: transparent;
+  padding: 0;
+  border-radius: 0;
+  font-size: inherit;
+}
+
+.reader-prose img {
+  max-width: 100%;
+  border-radius: 8px;
+  margin: 1em auto;
+  display: block;
+}
+
+.reader-prose table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+
+.reader-prose th,
+.reader-prose td {
+  border: 1px solid rgba(128,128,128,0.2);
+  padding: 0.5em 0.75em;
+  text-align: left;
+}
+
+.reader-prose th {
+  background: rgba(128,128,128,0.08);
+  font-weight: 600;
+}
+
+.reader-prose tr:nth-child(even) {
+  background: rgba(128,128,128,0.03);
+}
+
+.reader-prose hr {
+  border: none;
+  border-top: 1px solid rgba(128,128,128,0.25);
+  margin: 2em 0;
+}
+
+.reader-prose ul,
+.reader-prose ol {
+  padding-left: 1.5em;
+  margin-bottom: 1.1em;
+}
+
+.reader-prose li {
+  margin-bottom: 0.35em;
+}
+
+/* ── Override prose-invert white text in dark mode ───────────── */
+.dark .prose-invert,
+.dark .prose-invert :where(p, li, ul, ol, td, th, blockquote, dd, dl, figure, figcaption) {
+  color: #c0c8d4;
+}
+.dark .prose-invert :where(h1, h2, h3, h4, h5, h6, strong, b) {
+  color: #d8e0ec;
+}
+.dark .prose-invert :where(a) {
+  color: #7ec0ff;
+}
+.dark .prose-invert :where(a):hover {
+  color: #a8d4ff;
+}
+.dark .prose-invert :where(code):not(:where(pre *)) {
+  color: #e0e0e0;
+  background: rgba(255,255,255,0.1);
+}
+.dark .prose-invert :where(pre) {
+  color: #e0e0e0;
+  background: rgba(255,255,255,0.08);
+}
+.dark .prose-invert :where(hr) {
+  border-color: rgba(255,255,255,0.18);
+}
+.dark .prose-invert :where(thead) {
+  border-bottom-color: rgba(255,255,255,0.25);
+}
+.dark .prose-invert :where(tr):not(:last-child) {
+  border-bottom-color: rgba(255,255,255,0.12);
+}
+
+/* Reader prose dark mode colors */
+.dark .reader-prose :where(h1, h2, h3, h4, h5, h6, strong, b) {
+  color: #d8e0ec;
+}
+.dark .reader-prose :where(a) {
+  color: #7ec0ff;
+}
+.dark .reader-prose :where(a):hover {
+  color: #a8d4ff;
+}
+.dark .reader-prose :where(code):not(:where(pre *)) {
+  color: #e0e0e0;
+  background: rgba(255,255,255,0.1);
+}
+.dark .reader-prose :where(pre) {
+  background: rgba(255,255,255,0.08);
+}
+
