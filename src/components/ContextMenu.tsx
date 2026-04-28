@@ -1,15 +1,4 @@
 import React, { useRef, useEffect } from 'react';
-import {
-  Undo,
-  Redo,
-  Scissors,
-  Copy,
-  ClipboardPaste,
-  AlignLeft,
-  Braces,
-  Type,
-  X,
-} from 'lucide-react';
 
 export interface ContextMenuItem {
   id: string;

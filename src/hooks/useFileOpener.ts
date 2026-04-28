@@ -38,10 +38,6 @@ const runBackground = (cb: () => void, delay = 100) => {
   setTimeout(cb, delay);
 };
 
-const yieldToBrowser = (cb: () => void) => {
-  setTimeout(cb, 0);
-};
-
 export function useFileOpener() {
   const createTab = useEditorStore((s) => s.createTab);
   const setActiveTabId = useEditorStore((s) => s.setActiveTabId);

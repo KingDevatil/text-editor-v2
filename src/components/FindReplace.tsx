@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ChevronDown, ChevronUp, X, Replace, ReplaceAll, ChevronRight, ChevronLeft } from 'lucide-react';
 import { SearchCursor } from '@codemirror/search';
+import type { Text } from '@codemirror/state';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { getActiveView } from '../hooks/useEditorStatePool';
 
@@ -8,6 +9,11 @@ import { getActiveView } from '../hooks/useEditorStatePool';
 const MAX_SCAN_CHARS = 200_000;
 /** Debounce delay for match counting (ms). */
 const SCAN_DEBOUNCE_MS = 200;
+
+/** Returns a normalize function for case-insensitive search, or undefined for case-sensitive. */
+function getSearchNormalize(caseSensitive: boolean): ((s: string) => string) | undefined {
+  return caseSensitive ? undefined : (s: string) => s.toLowerCase();
+}
 
 interface FindReplaceProps {
   visible: boolean;
@@ -46,7 +52,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
       const doc = view.state.doc;
       const scanTo = Math.min(doc.length, MAX_SCAN_CHARS);
       let count = 0;
-      const cursor = new SearchCursor(doc, findText, 0, scanTo, caseSensitive);
+      const cursor = new SearchCursor(doc, findText, 0, scanTo, getSearchNormalize(caseSensitive));
       while (!cursor.next().done) {
         count++;
       }
@@ -64,9 +70,9 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
 
   /** Compute the 1-based index of a match position in the document. */
   const getMatchIndex = useCallback(
-    (doc: typeof view.state.doc, pos: number) => {
+    (doc: Text, pos: number) => {
       let idx = 0;
-      const cursor = new SearchCursor(doc, findText, 0, doc.length, caseSensitive);
+      const cursor = new SearchCursor(doc, findText, 0, doc.length, getSearchNormalize(caseSensitive));
       while (!cursor.next().done && cursor.value.from < pos) {
         idx++;
       }
@@ -85,7 +91,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
       findText,
       state.selection.main.to,
       state.doc.length,
-      caseSensitive
+      getSearchNormalize(caseSensitive)
     );
     const result = cursor.next();
     if (!result.done) {
@@ -96,7 +102,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
       setCurrentMatch(getMatchIndex(state.doc, result.value.from));
     } else {
       // Wrap around to beginning
-      const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, caseSensitive);
+      const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, getSearchNormalize(caseSensitive));
       const wrapResult = wrapCursor.next();
       if (!wrapResult.done) {
         view.dispatch({
@@ -116,7 +122,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
     const from = state.selection.main.from;
 
     // Search from beginning to current position to find all matches before cursor
-    const cursor = new SearchCursor(state.doc, findText, 0, from, caseSensitive);
+    const cursor = new SearchCursor(state.doc, findText, 0, from, getSearchNormalize(caseSensitive));
     let lastMatch: { from: number; to: number } | null = null;
     while (!cursor.next().done) {
       lastMatch = cursor.value;
@@ -130,7 +136,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
       setCurrentMatch(getMatchIndex(state.doc, lastMatch.from));
     } else {
       // Wrap around to end
-      const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, caseSensitive);
+      const wrapCursor = new SearchCursor(state.doc, findText, 0, state.doc.length, getSearchNormalize(caseSensitive));
       let finalMatch: { from: number; to: number } | null = null;
       while (!wrapCursor.next().done) {
         finalMatch = wrapCursor.value;
@@ -177,7 +183,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
     const { state } = view;
     const changes: { from: number; to: number; insert: string }[] = [];
 
-    const cursor = new SearchCursor(state.doc, findText, 0, state.doc.length, caseSensitive);
+    const cursor = new SearchCursor(state.doc, findText, 0, state.doc.length, getSearchNormalize(caseSensitive));
     while (!cursor.next().done) {
       changes.push({ from: cursor.value.from, to: cursor.value.to, insert: replaceText });
     }

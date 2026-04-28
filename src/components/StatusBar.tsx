@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FileType, ChevronUp } from 'lucide-react';
 import type { EditorTab, Encoding } from '../types';
 import { getEditorContent, getEditorLineCount, getEditorValueLength } from '../hooks/useEditorStatePool';
