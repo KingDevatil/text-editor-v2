@@ -1,7 +1,7 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, WrapText, Space, GitCompare, X, FileMinus, Crosshair, FolderOpen } from 'lucide-react';
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt, rectangularSelection, crosshairCursor } from '@codemirror/view';
-import { EditorState, Compartment, type Extension } from '@codemirror/state';
+import { EditorState, Compartment, EditorSelection, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll, indentMore, indentLess } from '@codemirror/commands';
 import { highlightSelectionMatches } from '@codemirror/search';
 import { foldGutter, foldKeymap, bracketMatching } from '@codemirror/language';
@@ -56,6 +56,23 @@ const unicodeHighlightCompartment = new Compartment();
 
 const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql']);
 
+/** Notepad++ style: Ctrl + click adds a cursor (multi-selection). */
+const ctrlClickMultiCursor = EditorView.domEventHandlers({
+  mousedown(event, view) {
+    if (event.ctrlKey && !event.shiftKey && !event.altKey && event.button === 0) {
+      const pos = view.posAtCoords({ x: event.clientX, y: event.clientY });
+      if (pos != null) {
+        const ranges = view.state.selection.ranges.slice();
+        ranges.push(EditorSelection.cursor(pos));
+        view.dispatch({ selection: EditorSelection.create(ranges) });
+      }
+      event.preventDefault();
+      return true;
+    }
+    return false;
+  },
+});
+
 /** Write text to clipboard — uses Tauri plugin in desktop, falls back to navigator API in browser. */
 async function writeClipboard(text: string): Promise<void> {
   if (isTauri()) {
@@ -101,6 +118,7 @@ function buildBaseExtensions(
     EditorState.allowMultipleSelections.of(true),
     rectangularSelection(),
     crosshairCursor(),
+    ctrlClickMultiCursor,
     keymap.of([...defaultKeymap, ...historyKeymap]),
     keymap.of([
       { key: 'Tab', run: indentMore, shift: indentLess },

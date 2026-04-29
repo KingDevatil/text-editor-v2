@@ -22,6 +22,7 @@ import CmEditor from './components/CmEditor';
 import DiffEditor from './components/DiffEditor';
 import CommandPalette from './components/CommandPalette';
 import TitleBar from './components/TitleBar';
+import EditorHelp from './components/EditorHelp';
 
 function App() {
   const tabs = useEditorStore((s) => s.tabs);
@@ -82,6 +83,7 @@ function App() {
 
   const openFile = useFileOpener();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showHelp, setShowHelp] = useState(false);
   const SIDEBAR_WIDTH = 220;
 
   // Auto-disable split when less than 2 tabs
@@ -701,6 +703,7 @@ function App() {
             openTabs={tabs}
             onOpenFile={handleSidebarOpenFile}
             onRegisterDefaultApp={handleRegisterDefaultApp}
+            onOpenHelp={() => setShowHelp(true)}
           />
 
         <div className="flex flex-col flex-1 overflow-hidden">
@@ -810,6 +813,11 @@ function App() {
               />
             )}
           </div>
+
+      {/* Editor Help overlay */}
+      {showHelp && (
+        <EditorHelp onClose={() => setShowHelp(false)} isDark={isDark} />
+      )}
 
           <StatusBar
             activeTab={activeTab}

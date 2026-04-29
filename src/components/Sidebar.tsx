@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { FileText, Settings, ChevronRight, ChevronDown, Folder, FolderOpen, RotateCcw, FolderOpenIcon, Star } from 'lucide-react';
+import { FileText, Settings, ChevronRight, ChevronDown, Folder, FolderOpen, RotateCcw, FolderOpenIcon, Star, HelpCircle } from 'lucide-react';
 import { invoke } from '@tauri-apps/api/core';
 import type { DirEntry, EditorTab } from '../types';
 
@@ -22,6 +22,7 @@ interface SidebarProps {
   openTabs: EditorTab[];
   onOpenFile: (filePath: string) => void;
   onRegisterDefaultApp?: () => void;
+  onOpenHelp?: () => void;
 }
 
 interface TreeNodeProps {
@@ -125,6 +126,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
   openTabs,
   onOpenFile,
   onRegisterDefaultApp,
+  onOpenHelp,
 }) => {
   const [activeSection, setActiveSection] = useState<'files' | 'settings'>('files');
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
@@ -394,6 +396,24 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
                   onChange={(e) => onFontSizeChange(Number(e.target.value))}
                   className="w-full"
                 />
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+                帮助
+              </label>
+              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700/50">
+                <button
+                  onClick={onOpenHelp}
+                  disabled={!onOpenHelp}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  <HelpCircle size={14} />
+                  使用说明
+                </button>
+                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 text-center">
+                  查看编辑器快捷键与功能说明
+                </p>
               </div>
             </div>
           </div>
