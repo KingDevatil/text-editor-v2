@@ -225,6 +225,13 @@ const CmEditor: React.FC<CmEditorProps> = ({
       effects: wordWrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
     });
 
+    // Ensure fontSize is applied even when reusing a pooled state with stale config
+    view.dispatch({
+      effects: fontSizeCompartment.reconfigure(
+        EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
+      ),
+    });
+
     // Workaround: if CM6 default double-click word selection fails to show
     // visual highlight (but selection is logically set), force a re-draw.
     let dblClickCleanup: (() => void) | undefined;
@@ -323,6 +330,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
   // Dynamic reconfiguration: font size
   useEffect(() => {
+    console.log('[CmEditor] fontSize effect', { fontSize, tabId, hasView: !!viewRef.current });
     const view = viewRef.current;
     if (!view) return;
     view.dispatch({
