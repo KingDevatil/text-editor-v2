@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import { getEditorContent } from '../hooks/useEditorStatePool';
+import { generateHeadingSlugs } from '../utils/slugify';
 
 interface MarkdownPreviewProps {
   tabId: string;
@@ -30,21 +31,41 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     };
   }, [tabId]);
 
+  const containerRef = useRef<HTMLDivElement>(null);
   const deferredContent = React.useDeferredValue(content);
   const html = useMemo(() => {
-    return marked.parse(deferredContent, { async: false }) as string;
+    const raw = marked.parse(deferredContent, { async: false }) as string;
+    const { htmlWithIds } = generateHeadingSlugs(raw);
+    return htmlWithIds;
   }, [deferredContent]);
 
   const isDark = theme === 'vs-dark';
 
+  // Intercept anchor clicks inside the overflow container
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const a = (e.target as HTMLElement).closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    e.preventDefault();
+    const id = decodeURIComponent(href.slice(1));
+    const el = document.getElementById(id);
+    if (el && containerRef.current) {
+      const top = (el as HTMLElement).offsetTop - 24;
+      containerRef.current.scrollTo({ top, behavior: 'smooth' });
+    }
+  }, []);
+
   return (
     <div
+      ref={containerRef}
       className="w-full h-full overflow-auto px-6 py-6"
       style={{
         backgroundColor: isDark ? '#0d1117' : '#ffffff',
         userSelect: 'text',
         WebkitUserSelect: 'text',
       }}
+      onClick={handleClick}
     >
       <div
         className={`prose max-w-none ${isDark ? 'prose-invert' : ''}`}

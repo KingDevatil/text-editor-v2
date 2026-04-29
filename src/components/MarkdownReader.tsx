@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { getEditorContent } from '../hooks/useEditorStatePool';
 import type { EditorTheme } from '../utils/themes';
+import { generateHeadingSlugs } from '../utils/slugify';
 
 interface MarkdownReaderProps {
   tabId: string;
@@ -19,11 +20,7 @@ interface MarkdownReaderProps {
   onToggleTheme: () => void;
 }
 
-interface TocItem {
-  level: number;
-  text: string;
-  id: string;
-}
+
 
 const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
   tabId,
@@ -61,26 +58,8 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
 
   const { html, toc } = useMemo(() => {
     const raw = marked.parse(deferredContent, { async: false }) as string;
-
-    // Extract TOC from headings
-    const items: TocItem[] = [];
-    const headingRegex = /<h([1-6])[^>]*>(.*?)<\/h[1-6]>/gi;
-    let match;
-    while ((match = headingRegex.exec(raw)) !== null) {
-      const level = parseInt(match[1], 10);
-      const text = match[2].replace(/<[^>]+>/g, '');
-      const id = `heading-${items.length}`;
-      items.push({ level, text, id });
-    }
-
-    // Inject IDs into HTML
-    let idx = 0;
-    const htmlWithIds = raw.replace(/<h([1-6])([^>]*)>/gi, (_m, level, attrs) => {
-      const id = `heading-${idx++}`;
-      return `<h${level}${attrs} id="${id}">`;
-    });
-
-    return { html: htmlWithIds, toc: items };
+    const { htmlWithIds, tocItems } = generateHeadingSlugs(raw);
+    return { html: htmlWithIds, toc: tocItems };
   }, [deferredContent]);
 
   // Scroll tracking
@@ -101,6 +80,21 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
       scrollRef.current.scrollTo({ top, behavior: 'smooth' });
     }
     setTocVisible(false);
+  }, []);
+
+  // Intercept in-document anchor clicks (e.g. `[text](#heading-id)`)
+  const handleContentClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const a = (e.target as HTMLElement).closest('a');
+    if (!a) return;
+    const href = a.getAttribute('href');
+    if (!href || !href.startsWith('#')) return;
+    e.preventDefault();
+    const id = decodeURIComponent(href.slice(1));
+    const el = document.getElementById(id);
+    if (el && scrollRef.current) {
+      const top = (el as HTMLElement).offsetTop - 24;
+      scrollRef.current.scrollTo({ top, behavior: 'smooth' });
+    }
   }, []);
 
   // Keyboard: ESC to exit
@@ -219,6 +213,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
         ref={scrollRef}
         className="flex-1 overflow-auto"
         onScroll={handleScroll}
+        onClick={handleContentClick}
       >
         <div className="mx-auto px-6 py-10 max-w-3xl">
           <div
