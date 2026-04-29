@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { marked } from 'marked';
 import { getEditorContent } from '../hooks/useEditorStatePool';
-import { generateHeadingSlugs } from '../utils/slugify';
+import { generateHeadingSlugs, slugify } from '../utils/slugify';
 
 interface MarkdownPreviewProps {
   tabId: string;
@@ -48,8 +48,13 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     const href = a.getAttribute('href');
     if (!href || !href.startsWith('#')) return;
     e.preventDefault();
-    const id = decodeURIComponent(href.slice(1));
-    const el = document.getElementById(id);
+    const rawId = decodeURIComponent(href.slice(1));
+    let el = document.getElementById(rawId);
+    // Fallback: if the href contains punctuation that slugify strips,
+    // try the slugified version.
+    if (!el) {
+      el = document.getElementById(slugify(rawId));
+    }
     if (el && containerRef.current) {
       const top = (el as HTMLElement).offsetTop - 24;
       containerRef.current.scrollTo({ top, behavior: 'smooth' });

@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import { getEditorContent } from '../hooks/useEditorStatePool';
 import type { EditorTheme } from '../utils/themes';
-import { generateHeadingSlugs } from '../utils/slugify';
+import { generateHeadingSlugs, slugify } from '../utils/slugify';
 
 interface MarkdownReaderProps {
   tabId: string;
@@ -89,8 +89,13 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
     const href = a.getAttribute('href');
     if (!href || !href.startsWith('#')) return;
     e.preventDefault();
-    const id = decodeURIComponent(href.slice(1));
-    const el = document.getElementById(id);
+    const rawId = decodeURIComponent(href.slice(1));
+    let el = document.getElementById(rawId);
+    // Fallback: if the href contains punctuation that slugify strips,
+    // try the slugified version.
+    if (!el) {
+      el = document.getElementById(slugify(rawId));
+    }
     if (el && scrollRef.current) {
       const top = (el as HTMLElement).offsetTop - 24;
       scrollRef.current.scrollTo({ top, behavior: 'smooth' });
