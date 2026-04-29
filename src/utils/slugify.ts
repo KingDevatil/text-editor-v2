@@ -8,7 +8,7 @@ export function slugify(text: string): string {
   // Remove common Chinese punctuation
   slug = slug.replace(/[、，。！？；：“”‘’（）【】《》]/g, '');
   // Replace spaces / full-width spaces with hyphens
-  slug = slug.replace(/[\s　]+/g, '-');
+  slug = slug.replace(/[\s\u3000]+/g, '-');
   // Remove other special chars, keep word chars and CJK chars
   slug = slug.replace(/[^\w\u4e00-\u9fa5-]/g, '');
   // Lowercase

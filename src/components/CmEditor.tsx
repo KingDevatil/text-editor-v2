@@ -3,6 +3,7 @@ import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, Wra
 import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt, rectangularSelection, crosshairCursor, drawSelection, highlightSpecialChars, dropCursor } from '@codemirror/view';
 import { EditorState, Compartment, EditorSelection, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll, indentMore, indentLess } from '@codemirror/commands';
+import { selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
 import { highlightSelectionMatches } from '@codemirror/search';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { foldGutter, foldKeymap, bracketMatching, indentOnInput } from '@codemirror/language';
@@ -54,6 +55,7 @@ const lintCompartment = new Compartment();
 const autocompleteCompartment = new Compartment();
 const wordWrapCompartment = new Compartment();
 const unicodeHighlightCompartment = new Compartment();
+const largeFileCompartment = new Compartment();
 
 const FORMATTABLE_LANGUAGES = new Set(['json', 'xml', 'html', 'css', 'javascript', 'typescript', 'sql']);
 
@@ -128,6 +130,8 @@ function buildBaseExtensions(
     keymap.of([...defaultKeymap, ...historyKeymap, ...closeBracketsKeymap]),
     keymap.of([
       { key: 'Tab', run: indentMore, shift: indentLess },
+      { key: 'Mod-d', run: selectNextOccurrence, preventDefault: true },
+      { key: 'Shift-Mod-l', run: selectSelectionMatches, preventDefault: true },
     ]),
     lineNumbers(),
     highlightActiveLineGutter(),
@@ -144,13 +148,11 @@ function buildBaseExtensions(
     unicodeHighlightCompartment.of(enableUnicodeHighlight ? [...unicodeHighlightExt] : []),
   ];
 
-  if (!largeFileOptimize) {
-    exts.push(
-      foldGutter(),
-      keymap.of(foldKeymap),
-      bracketMatching()
-    );
-  }
+  exts.push(
+    largeFileCompartment.of(
+      largeFileOptimize ? [] : [foldGutter(), keymap.of(foldKeymap), bracketMatching()]
+    )
+  );
 
   if (showWhitespace) {
     exts.push(highlightWhitespace(), highlightTrailingWhitespace());
@@ -395,6 +397,18 @@ const CmEditor: React.FC<CmEditorProps> = ({
     });
     setEditorState(tabId, view.state);
   }, [enableUnicodeHighlight, tabId]);
+
+  // Dynamic reconfiguration: large file optimize (foldGutter + bracketMatching)
+  useEffect(() => {
+    const view = viewRef.current;
+    if (!view) return;
+    view.dispatch({
+      effects: largeFileCompartment.reconfigure(
+        largeFileOptimize ? [] : [foldGutter(), keymap.of(foldKeymap), bracketMatching()]
+      ),
+    });
+    setEditorState(tabId, view.state);
+  }, [largeFileOptimize, tabId]);
 
   // Build context menu items based on current editor state
   const buildMenuItems = useCallback((): ContextMenuItem[] => {

@@ -34,14 +34,16 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, commands
 
   useEffect(() => {
     if (open) {
-      setQuery('');
-      setSelectedIndex(0);
+      queueMicrotask(() => {
+        setQuery('');
+        setSelectedIndex(0);
+      });
       setTimeout(() => inputRef.current?.focus(), 50);
     }
   }, [open]);
 
   useEffect(() => {
-    setSelectedIndex(0);
+    queueMicrotask(() => setSelectedIndex(0));
   }, [query]);
 
   useEffect(() => {

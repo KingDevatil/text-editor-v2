@@ -41,7 +41,11 @@ function App() {
   const handleSaveFileRef = useRef<(() => void) | null>(null);
   const handleFormatRef = useRef<(() => void) | null>(null);
   const findReplaceVisibleRef = useRef(findReplaceVisible);
-  findReplaceVisibleRef.current = findReplaceVisible;
+
+  // Keep all callback refs up-to-date outside of render phase
+  useEffect(() => {
+    findReplaceVisibleRef.current = findReplaceVisible;
+  });
   const previewVisible = useEditorStore((s) => s.previewVisible);
   const splitMode = useEditorStore((s) => s.splitMode);
   const projectPath = useEditorStore((s) => s.projectPath);
@@ -133,6 +137,12 @@ function App() {
   }, [openFile]);
 
   // Keyboard shortcuts — refs guarantee we always call the latest callbacks
+  const activeTabRef = useRef(activeTab);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  });
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -183,8 +193,9 @@ function App() {
       // Go to definition shortcut (only intercept in Tauri; let F12 open DevTools in browser)
       if (e.key === 'F12' && isTauri()) {
         e.preventDefault();
-        if (activeTab) {
-          const view = getActiveView(activeTab.id);
+        const currentTab = activeTabRef.current;
+        if (currentTab) {
+          const view = getActiveView(currentTab.id);
           if (view) {
             const ok = goToDefinition(view);
             if (!ok) {
@@ -196,13 +207,15 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setFindReplaceVisible]);
+  }, [setFindReplaceVisible, setReadMode]);
 
   const handleNewFile = useCallback(() => {
     const group = activeTab?.group || 1;
     createTab('Untitled', undefined, undefined, group);
   }, [createTab, activeTab]);
-  handleNewFileRef.current = handleNewFile;
+  useEffect(() => {
+    handleNewFileRef.current = handleNewFile;
+  });
 
   const handleNewFileInGroup = useCallback((group: 1 | 2) => {
     createTab('Untitled', undefined, undefined, group);
@@ -225,7 +238,9 @@ function App() {
       fileInputRef.current?.click();
     }
   }, [openFile]);
-  handleOpenFileRef.current = handleOpenFile;
+  useEffect(() => {
+    handleOpenFileRef.current = handleOpenFile;
+  });
 
   const handleFileSelected = useCallback(
     async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -236,7 +251,7 @@ function App() {
 
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
-        const filePath = (file as any).path as string | undefined || file.name;
+        const filePath = (file as { path?: string }).path || file.name;
         const fileName = file.name;
 
         filePromises.push((async () => {
@@ -294,7 +309,7 @@ function App() {
             },
           ],
         };
-        // @ts-ignore
+        // @ts-expect-error showSaveFilePicker is not in standard DOM types yet
         const handle = await window.showSaveFilePicker(pickerOpts);
         const writable = await handle.createWritable();
         await writable.write(getEditorContent(activeTab.id));
@@ -315,7 +330,9 @@ function App() {
       console.log('Save cancelled or failed', err);
     }
   }, [activeTab, markTabSaved, renameTab]);
-  handleSaveFileRef.current = handleSaveFile;
+  useEffect(() => {
+    handleSaveFileRef.current = handleSaveFile;
+  });
 
   const handleOpenFolder = useCallback(async () => {
     if (!isTauri()) return;
@@ -567,7 +584,9 @@ function App() {
       else alert(msg);
     }
   }, [activeTab, markTabDirty]);
-  handleFormatRef.current = handleFormat;
+  useEffect(() => {
+    handleFormatRef.current = handleFormat;
+  });
 
   const handleToggleSplit = useCallback(() => {
     setSplitMode(!splitMode);
@@ -641,7 +660,7 @@ function App() {
         }
       },
     }] : []),
-  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, handleToggleReadMode, findReplaceVisible, sidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, splitMode, diffMode, readMode, activeTab]);
+  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, handleToggleReadMode, findReplaceVisible, setFindReplaceVisible, sidebarVisible, setSidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, setPreviewVisible, splitMode, diffMode, readMode, activeTab, theme]);
 
   return (
     <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`}>
@@ -742,10 +761,10 @@ function App() {
               />
             ) : group1Tab ? (
               <>
-                <div className={`h-full ${splitMode || (previewVisible && canPreview) ? 'w-1/2' : 'w-full'}`}>
+                <div className="h-full flex-1 min-w-0">
                   <CmEditor
                     tabId={group1Tab.id}
-                    language={group1Tab.language as any}
+                    language={group1Tab.language}
                     theme={theme}
                     onChange={handleEditorChange(group1Tab.id)}
                     fontSize={fontSize}
@@ -760,12 +779,12 @@ function App() {
                 </div>
                 {splitMode && (
                   <>
-                    <div className="w-px bg-gray-200 dark:bg-gray-800 self-stretch" />
-                    <div className="w-1/2 h-full">
+                    <div className="w-px bg-gray-200 dark:bg-gray-800 self-stretch flex-shrink-0" />
+                    <div className="flex-1 h-full min-w-0">
                       {activeGroup2TabId ? (
                         <CmEditor
                           tabId={activeGroup2TabId}
-                          language={tabs.find((t) => t.id === activeGroup2TabId)?.language as any}
+                          language={tabs.find((t) => t.id === activeGroup2TabId)?.language ?? 'plaintext'}
                           theme={theme}
                           onChange={handleEditorChange(activeGroup2TabId)}
                           fontSize={fontSize}
@@ -787,8 +806,8 @@ function App() {
                 )}
                 {previewVisible && canPreview && (
                   <>
-                    <div className="w-px bg-gray-200 dark:bg-gray-800 self-stretch" />
-                    <div className="w-1/2 h-full">
+                    <div className="w-px bg-gray-200 dark:bg-gray-800 self-stretch flex-shrink-0" />
+                    <div className="flex-1 h-full min-w-0">
                       <MarkdownPreview tabId={group1Tab.id} theme={theme} />
                     </div>
                   </>

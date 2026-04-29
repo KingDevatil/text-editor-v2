@@ -14,7 +14,7 @@ function buildTooltip(view: EditorView, pos: number): Tooltip | null {
 
   // Simple type inference for display
   let typeLabel = 'identifier';
-  const lang = (view.state.facet as any)?.language?.name || '';
+  const lang = (view.state.facet as unknown as { language?: { name: string } })?.language?.name || '';
 
   if (lang.includes('json')) {
     // Try to build a simple path for JSON
@@ -76,8 +76,6 @@ function buildJsonPath(view: EditorView, pos: number): string | null {
 
   // Walk up to find parent contexts
   let bracketDepth = 0;
-  let arrayIndex = 0;
-
   for (let i = line.from - 1; i >= 0; i--) {
     const ch = doc.sliceString(i, i + 1);
     if (ch === '}' || ch === ']') bracketDepth++;
@@ -94,8 +92,7 @@ function buildJsonPath(view: EditorView, pos: number): string | null {
             else if (c === '}' || c === ']') nestedDepth--;
             else if (c === ',' && nestedDepth === 0) commaCount++;
           }
-          arrayIndex = commaCount;
-          parts.unshift(`[${arrayIndex}]`);
+          parts.unshift(`[${commaCount}]`);
         }
         // Look for key on the line containing this {
         const parentLine = doc.lineAt(i);
@@ -125,7 +122,7 @@ function escapeHtml(text: string): string {
  * CM6 hover tooltip extension.
  */
 export const hoverInfo = hoverTooltip(
-  (view, pos, _side) => {
+  (view, pos) => {
     return buildTooltip(view, pos);
   },
   {

@@ -15,9 +15,9 @@ function jsonLinter(view: EditorView): Diagnostic[] {
   try {
     JSON.parse(text);
     return [];
-  } catch (e: any) {
+  } catch (e) {
     // Try to extract position from error message
-    const match = e.message.match(/position (\d+)/i);
+    const match = (e as Error).message.match(/position (\d+)/i);
     let pos = 0;
     if (match) {
       pos = parseInt(match[1], 10);
@@ -29,7 +29,7 @@ function jsonLinter(view: EditorView): Diagnostic[] {
         from: line.from,
         to: line.to,
         severity: 'error',
-        message: `JSON: ${e.message}`,
+        message: `JSON: ${(e as Error).message}`,
       },
     ];
   }
@@ -47,9 +47,9 @@ function jsLinter(view: EditorView): Diagnostic[] {
   try {
     new Function(text);
     return [];
-  } catch (e: any) {
+  } catch (e) {
     // new Function errors look like "Unexpected token '}' (1:15)"
-    const match = e.message.match(/\((\d+):(\d+)\)/);
+    const match = (e as Error).message.match(/\((\d+):(\d+)\)/);
     let lineNum = 1;
     let col = 0;
     if (match) {
@@ -65,7 +65,7 @@ function jsLinter(view: EditorView): Diagnostic[] {
         from,
         to: Math.min(from + 1, line.to),
         severity: 'error',
-        message: `Syntax: ${e.message}`,
+        message: `Syntax: ${(e as Error).message}`,
       },
     ];
   }

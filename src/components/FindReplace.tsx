@@ -39,7 +39,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
         if (sel.from !== sel.to) {
           const text = view.state.doc.sliceString(sel.from, sel.to);
           if (text.length <= 500) {
-            setFindText(text);
+            queueMicrotask(() => setFindText(text));
           }
         }
       }
@@ -55,8 +55,10 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
   // Debounced + limited match counting to avoid freezing on large files
   useEffect(() => {
     if (!findText) {
-      setMatchCount(0);
-      setCurrentMatch(0);
+      queueMicrotask(() => {
+        setMatchCount(0);
+        setCurrentMatch(0);
+      });
       return;
     }
     const view = activeTabId ? getActiveView(activeTabId) : undefined;

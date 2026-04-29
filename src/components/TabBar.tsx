@@ -144,7 +144,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   }, [onNewFileInGroup]);
 
   // ---- Mouse-based drag & drop (replaces HTML5 drag/drop) ----
-  const getInsertInfo = useCallback((clientX: number, _clientY: number) => {
+  const getInsertInfo = useCallback((clientX: number) => {
     // Determine which group container the pointer is inside by checking rects directly.
     // This avoids relying on elementFromPoint which can behave oddly in some WebViews.
     let targetGroup: 1 | 2 | null = null;
@@ -217,7 +217,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         if (Math.sqrt(dx * dx + dy * dy) < 5) return;
         ds.active = true;
       }
-      const info = getInsertInfo(ev.clientX, ev.clientY);
+      const info = getInsertInfo(ev.clientX);
       dragInfoRef.current = info;
       if (!info) {
         setDragOver(null);
@@ -237,7 +237,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       setDragOver(info);
     };
 
-    const handleMouseUp = (_ev: MouseEvent) => {
+    const handleMouseUp = () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       const ds = dragStateRef.current;

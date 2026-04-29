@@ -88,7 +88,7 @@ interface EditorActions {
   markTabSaved: (tabId: string) => void;
   renameTab: (tabId: string, newTitle: string, newFilePath?: string) => void;
   setTabEncoding: (tabId: string, encoding: Encoding) => void;
-  setTabLanguage: (tabId: string, language: string) => void;
+  setTabLanguage: (tabId: string, language: Language) => void;
   moveTabToGroup: (tabId: string, group: 1 | 2) => void;
   reorderTab: (tabId: string, group: 1 | 2, targetGroupIndex: number) => void;
   setSplitMode: (mode: boolean) => void;
@@ -125,7 +125,7 @@ interface EditorActions {
 
 const loaded = loadSettings();
 
-const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
+const useEditorStore = create<EditorState & EditorActions>((set) => ({
   tabs: [],
   activeTabId: null,
   activeGroup1TabId: null,
@@ -363,7 +363,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
       if (!mode) {
         return {
           splitMode: false,
-          tabs: state.tabs.map((t) => ({ ...t, group: 1 as 1 })),
+          tabs: state.tabs.map((t) => ({ ...t, group: 1 as const })),
           activeGroup1TabId: state.activeTabId,
           activeGroup2TabId: null,
         };
@@ -374,7 +374,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
       let nextActiveGroup1Id = state.activeGroup1TabId;
       if (!hasGroup2 && state.tabs.length >= 2 && state.activeTabId) {
         // Move current active tab to group2, and pick another tab for group1
-        nextTabs = state.tabs.map((t) => (t.id === state.activeTabId ? { ...t, group: 2 as 2 } : t));
+        nextTabs = state.tabs.map((t) => (t.id === state.activeTabId ? { ...t, group: 2 as const } : t));
         nextActiveGroup2Id = state.activeTabId;
         const g1Tabs = nextTabs.filter((t) => t.id !== state.activeTabId && (t.group === 1 || !t.group));
         nextActiveGroup1Id = g1Tabs[g1Tabs.length - 1]?.id || null;

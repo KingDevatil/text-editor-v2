@@ -43,6 +43,20 @@ export function hasEditorState(tabId: string): boolean {
  * Used when re-reading a file (encoding change, reload, drag-drop update).
  */
 export function updateEditorContent(tabId: string, newContent: string): void {
+  const view = getActiveView(tabId);
+  if (view) {
+    // Always dispatch from the view's current state to avoid stale-state issues
+    view.dispatch({
+      changes: {
+        from: 0,
+        to: view.state.doc.length,
+        insert: newContent,
+      },
+    });
+    pool.states.set(tabId, view.state);
+    return;
+  }
+
   const oldState = pool.states.get(tabId);
   if (!oldState) {
     console.log('[updateEditorContent] no state for tabId:', tabId);
@@ -57,15 +71,6 @@ export function updateEditorContent(tabId: string, newContent: string): void {
     },
   });
   pool.states.set(tabId, tr.state);
-
-  // If there's an active EditorView for this tab, dispatch the transaction
-  const view = getActiveView(tabId);
-  if (view) {
-    console.log('[updateEditorContent] dispatching to view, docChanged:', tr.docChanged, 'tabId:', tabId);
-    view.dispatch(tr);
-  } else {
-    console.log('[updateEditorContent] no active view for tabId:', tabId);
-  }
 }
 
 // Track active EditorView instances per tab (set by CmEditor component)

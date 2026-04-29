@@ -67,7 +67,7 @@ function detectFormat(text: string): string | null {
   }
 
   // JSON fragment detection: contains key-value pairs with quotes and colons
-  if (/"[^"]+":\s*"/.test(trimmed) || /"[^"]+":\s*[\[{\d]/.test(trimmed)) {
+  if (/"[^"]+":\s*"/.test(trimmed) || /"[^"]+":\s*[[{\d]/.test(trimmed)) {
     // Try wrapping in { } or [ ] and parsing
     const candidates = [`{${trimmed}}`, `[${trimmed}]`, trimmed];
     for (const candidate of candidates) {
@@ -87,7 +87,7 @@ function detectFormat(text: string): string | null {
   if (/\b(SELECT|INSERT|UPDATE|DELETE|CREATE|DROP|ALTER|JOIN|WHERE|FROM|TABLE|INDEX)\b/i.test(trimmed)) return 'sql';
 
   // CSS
-  if (/[a-zA-Z0-9_\-#.:*\[\]]+\s*\{/.test(trimmed) && trimmed.includes(':')) return 'css';
+  if (/[-a-zA-Z0-9_#.*:[\]]+\s*\{/.test(trimmed) && trimmed.includes(':')) return 'css';
 
   return null;
 }

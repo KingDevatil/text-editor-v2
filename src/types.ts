@@ -1,7 +1,7 @@
 export interface EditorTab {
   id: string;
   title: string;
-  language: string;
+  language: Language;
   isDirty: boolean;
   filePath?: string;
   encoding: Encoding;

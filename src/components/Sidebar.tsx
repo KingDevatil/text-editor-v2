@@ -171,10 +171,13 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
   // Auto-load root directory when project changes
   useEffect(() => {
     if (projectPath) {
-      setExpandedDirs(new Set([projectPath]));
-      setDirCache(new Map());
-      loadDirectory(projectPath);
+      queueMicrotask(() => {
+        setExpandedDirs(new Set([projectPath]));
+        setDirCache(new Map());
+        loadDirectory(projectPath);
+      });
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectPath]);
 
   const handleCloseFolder = useCallback(() => {

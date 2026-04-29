@@ -1,13 +1,13 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { FileType, ChevronUp } from 'lucide-react';
-import type { EditorTab, Encoding } from '../types';
+import type { EditorTab, Encoding, Language } from '../types';
 import { getEditorContent, getEditorLineCount, getEditorValueLength } from '../hooks/useEditorStatePool';
 
 interface StatusBarProps {
   activeTab: EditorTab | null;
   theme: string;
   onEncodingChange?: (encoding: Encoding) => void;
-  onLanguageChange?: (language: string) => void;
+  onLanguageChange?: (language: Language) => void;
   wordWrap?: boolean;
   onToggleWordWrap?: () => void;
   showWhitespace?: boolean;
@@ -30,7 +30,7 @@ const ENCODINGS: Encoding[] = [
   'Windows-1252',
 ];
 
-const LANGUAGES = [
+const LANGUAGES: { id: Language; label: string }[] = [
   { id: 'plaintext', label: 'Plain Text' },
   { id: 'json', label: 'JSON' },
   { id: 'javascript', label: 'JavaScript' },
@@ -87,20 +87,23 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
   const rafRef = useRef<number | null>(null);
   const lastContentRef = useRef('');
 
-  // Quick stats from state pool
+  // Quick stats from state pool — read directly so they update on every render
   const quickStats = useMemo(() => {
     if (!activeTab) return { lineCount: 0, charCount: 0 };
     return {
       lineCount: getEditorLineCount(activeTab.id),
       charCount: getEditorValueLength(activeTab.id),
     };
-  }, [activeTab?.id]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, activeTab?.id, wordCount]); // wordCount changes on content edit, triggering re-calc
 
   // Async debounced word count via polling (CM6 has no model.onDidChangeContent)
   useEffect(() => {
     if (!activeTab) {
-      setWordCount(0);
-      setCalculating(false);
+      queueMicrotask(() => {
+        setWordCount(0);
+        setCalculating(false);
+      });
       return;
     }
 

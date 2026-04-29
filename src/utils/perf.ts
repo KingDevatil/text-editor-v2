@@ -144,5 +144,5 @@ export const perf = new PerfMonitor();
 
 // Expose to window for console debugging
 if (typeof window !== 'undefined') {
-  (window as any).perf = perf;
+  (window as unknown as Record<string, unknown>).perf = perf;
 }

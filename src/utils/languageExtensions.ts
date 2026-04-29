@@ -16,7 +16,7 @@ const iniLanguage = StreamLanguage.define({
       stream.skipToEnd();
       return 'comment';
     }
-    if (stream.match(/^\s*[a-zA-Z0-9_\-]+\s*=/)) {
+    if (stream.match(/^\s*[a-zA-Z0-9_-]+\s*=/)) {
       return 'keyword';
     }
     stream.skipToEnd();
@@ -164,6 +164,7 @@ export async function loadLanguageExtensions(lang: Language): Promise<Extension[
     return exts;
   }
 
+  // eslint-disable-next-line no-useless-assignment
   let exts: Extension[] = [];
 
   switch (lang) {
