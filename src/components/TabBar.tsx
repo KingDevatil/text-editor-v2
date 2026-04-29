@@ -232,14 +232,24 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       if (!info) return;
 
       if (info.group === ds.group) {
-        const groupTabs = info.group === 1
+        const groupTabsOrdered = info.group === 1
           ? tabs.filter((t) => t.group === 1 || !t.group)
           : tabs.filter((t) => t.group === 2);
-        const currentIndex = groupTabs.findIndex((t) => t.id === ds.tabId);
+        const currentIndex = groupTabsOrdered.findIndex((t) => t.id === ds.tabId);
         if (info.index === currentIndex || info.index === currentIndex + 1) return;
 
-        const globalCurrentIndex = tabs.findIndex((t) => t.id === ds.tabId);
-        const globalTargetIndex = globalCurrentIndex + (info.index - currentIndex);
+        // Compute global target index correctly regardless of gaps between groups
+        const remainingTabs = tabs.filter((t) => t.id !== ds.tabId);
+        let globalTargetIndex: number;
+        if (info.index >= groupTabsOrdered.length) {
+          // Move to the end of the group
+          const lastGroupTab = groupTabsOrdered[groupTabsOrdered.length - 1];
+          const lastIndex = remainingTabs.findIndex((t) => t.id === lastGroupTab.id);
+          globalTargetIndex = lastIndex + 1;
+        } else {
+          const targetTab = groupTabsOrdered[info.index];
+          globalTargetIndex = remainingTabs.findIndex((t) => t.id === targetTab.id);
+        }
         onReorderTab?.(ds.tabId, globalTargetIndex);
       } else {
         onMoveTabToGroup?.(ds.tabId, info.group);
