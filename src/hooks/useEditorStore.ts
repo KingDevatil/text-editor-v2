@@ -14,6 +14,55 @@ function getLanguageFromFileName(fileName: string): Language {
   return EXT_TO_LANGUAGE[ext] || 'plaintext';
 }
 
+const SETTINGS_KEY = 'te2-settings';
+
+interface PersistedSettings {
+  theme?: 'vs' | 'vs-dark';
+  sidebarVisible?: boolean;
+  findReplaceVisible?: boolean;
+  unicodeHighlight?: boolean;
+  fontSize?: number;
+  previewVisible?: boolean;
+  largeFileOptimize?: boolean;
+  wordWrap?: boolean;
+  showWhitespace?: boolean;
+  scrollPastEnd?: boolean;
+  minimapVisible?: boolean;
+  readMode?: boolean;
+  customKeybindings?: Record<string, string>;
+}
+
+function loadSettings(): PersistedSettings {
+  try {
+    return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
+  } catch {
+    return {};
+  }
+}
+
+function saveSettings(state: EditorState & EditorActions) {
+  try {
+    const payload: PersistedSettings = {
+      theme: state.theme,
+      sidebarVisible: state.sidebarVisible,
+      findReplaceVisible: state.findReplaceVisible,
+      unicodeHighlight: state.unicodeHighlight,
+      fontSize: state.fontSize,
+      previewVisible: state.previewVisible,
+      largeFileOptimize: state.largeFileOptimize,
+      wordWrap: state.wordWrap,
+      showWhitespace: state.showWhitespace,
+      scrollPastEnd: state.scrollPastEnd,
+      minimapVisible: state.minimapVisible,
+      readMode: state.readMode,
+      customKeybindings: state.customKeybindings,
+    };
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
+  } catch {
+    // ignore
+  }
+}
+
 interface EditorState {
   tabs: EditorTab[];
   activeTabId: string | null;
@@ -41,6 +90,7 @@ interface EditorActions {
   setTabEncoding: (tabId: string, encoding: Encoding) => void;
   setTabLanguage: (tabId: string, language: string) => void;
   moveTabToGroup: (tabId: string, group: 1 | 2) => void;
+  reorderTab: (tabId: string, targetIndex: number) => void;
   setSplitMode: (mode: boolean) => void;
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
@@ -73,24 +123,26 @@ interface EditorActions {
   resetKeybindings: () => void;
 }
 
+const loaded = loadSettings();
+
 const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
   tabs: [],
   activeTabId: null,
   activeGroup1TabId: null,
   activeGroup2TabId: null,
-  theme: 'vs-dark',
-  sidebarVisible: true,
-  findReplaceVisible: false,
-  unicodeHighlight: false,
-  fontSize: 14,
-  previewVisible: false,
+  theme: loaded.theme ?? 'vs-dark',
+  sidebarVisible: loaded.sidebarVisible ?? true,
+  findReplaceVisible: loaded.findReplaceVisible ?? false,
+  unicodeHighlight: loaded.unicodeHighlight ?? false,
+  fontSize: loaded.fontSize ?? 14,
+  previewVisible: loaded.previewVisible ?? false,
   splitMode: false,
   projectPath: null,
-  largeFileOptimize: false,
-  wordWrap: false,
-  showWhitespace: false,
-  scrollPastEnd: true,
-  minimapVisible: true,
+  largeFileOptimize: loaded.largeFileOptimize ?? false,
+  wordWrap: loaded.wordWrap ?? false,
+  showWhitespace: loaded.showWhitespace ?? false,
+  scrollPastEnd: loaded.scrollPastEnd ?? true,
+  minimapVisible: loaded.minimapVisible ?? true,
   diffMode: false,
   diffLeftTabId: null,
   diffRightTabId: null,
@@ -263,6 +315,17 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
     }));
   },
 
+  reorderTab: (tabId, targetIndex) => {
+    set((state) => {
+      const currentIndex = state.tabs.findIndex((t) => t.id === tabId);
+      if (currentIndex === -1 || currentIndex === targetIndex) return state;
+      const newTabs = [...state.tabs];
+      const [moved] = newTabs.splice(currentIndex, 1);
+      newTabs.splice(targetIndex, 0, moved);
+      return { tabs: newTabs };
+    });
+  },
+
   setSplitMode: (mode) => {
     set((state) => {
       if (mode && state.tabs.length < 2) return state;
@@ -327,5 +390,9 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
     })),
   resetKeybindings: () => set({ customKeybindings: {} }),
 }));
+
+useEditorStore.subscribe((state) => {
+  saveSettings(state);
+});
 
 export { useEditorStore };

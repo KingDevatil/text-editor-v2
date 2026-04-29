@@ -14,6 +14,7 @@ interface TabBarProps {
   onNewFile?: () => void;
   onNewFileInGroup?: (group: 1 | 2) => void;
   onMoveTabToGroup?: (tabId: string, group: 1 | 2) => void;
+  onReorderTab?: (tabId: string, targetIndex: number) => void;
   onCloseTabs?: (tabIds: string[]) => void;
   onRenameTab?: (tabId: string, newTitle: string) => void;
 }
@@ -37,6 +38,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   onNewFile,
   onNewFileInGroup,
   onMoveTabToGroup,
+  onReorderTab,
   onCloseTabs,
   onRenameTab,
 }) => {
@@ -45,7 +47,6 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   const g2ScrollRef = useRef<HTMLDivElement>(null);
   const [g1Scroll, setG1Scroll] = useState<ScrollState>({ canLeft: false, canRight: false });
   const [g2Scroll, setG2Scroll] = useState<ScrollState>({ canLeft: false, canRight: false });
-  const [dragOverGroup, setDragOverGroup] = useState<1 | 2 | null>(null);
   const [contextMenu, setContextMenu] = useState<{
     visible: boolean;
     x: number;
@@ -56,7 +57,20 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const renameInputRef = useRef<HTMLInputElement>(null);
-  const draggedTabIdRef = useRef<string | null>(null);
+
+  // Mouse-based drag state (HTML5 drag/drop doesn't work reliably in Tauri WebView)
+  const dragStateRef = useRef<{
+    tabId: string;
+    group: 1 | 2;
+    startX: number;
+    startY: number;
+    active: boolean;
+  } | null>(null);
+  const [dragOver, setDragOver] = useState<{
+    group: 1 | 2;
+    index: number;
+    x: number;
+  } | null>(null);
 
   const checkScroll = useCallback((el: HTMLDivElement | null, setter: React.Dispatch<React.SetStateAction<ScrollState>>) => {
     if (!el) return;
@@ -124,57 +138,117 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     onNewFileInGroup?.(group);
   }, [onNewFileInGroup]);
 
-  const handleDragStart = useCallback((e: React.DragEvent, tabId: string) => {
-    draggedTabIdRef.current = tabId;
-    try {
-      if (e.dataTransfer) {
-        e.dataTransfer.effectAllowed = 'all';
-        e.dataTransfer.setData('text/plain', tabId);
-        // Some WebView engines only recognise the legacy 'Text' type
-        e.dataTransfer.setData('Text', tabId);
+  // ---- Mouse-based drag & drop (replaces HTML5 drag/drop) ----
+  const getInsertInfo = useCallback((clientX: number, clientY: number) => {
+    const el = document.elementFromPoint(clientX, clientY);
+    let targetGroup: 1 | 2 | null = null;
+    let node: Element | null = el;
+    while (node) {
+      if (node instanceof HTMLElement) {
+        const g = node.dataset.group;
+        if (g === '1' || g === '2') {
+          targetGroup = parseInt(g, 10) as 1 | 2;
+          break;
+        }
       }
-    } catch {
-      // ignore dataTransfer errors in some WebView environments
+      node = node.parentElement;
     }
+    if (!targetGroup || !node) return null;
+
+    const container = node as HTMLElement;
+    const tabEls = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-id]'));
+    let targetIndex = 0;
+    let indicatorX = container.getBoundingClientRect().left + 4;
+
+    if (tabEls.length > 0) {
+      let found = false;
+      for (let i = 0; i < tabEls.length; i++) {
+        const rect = tabEls[i].getBoundingClientRect();
+        const mid = rect.left + rect.width / 2;
+        if (clientX < mid) {
+          targetIndex = i;
+          indicatorX = rect.left;
+          found = true;
+          break;
+        }
+      }
+      if (!found) {
+        const last = tabEls[tabEls.length - 1];
+        const rect = last.getBoundingClientRect();
+        targetIndex = tabEls.length;
+        indicatorX = rect.right;
+      }
+    }
+    return { group: targetGroup, index: targetIndex, x: indicatorX };
   }, []);
 
-  const handleDragOver = useCallback((e: React.DragEvent, group: 1 | 2) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    setDragOverGroup(group);
-  }, []);
+  const handleMouseDown = useCallback((e: React.MouseEvent, tabId: string, group: 1 | 2) => {
+    if (e.button !== 0) return;
+    dragStateRef.current = {
+      tabId,
+      group,
+      startX: e.clientX,
+      startY: e.clientY,
+      active: false,
+    };
 
-  const handleDragEnter = useCallback((e: React.DragEvent, group: 1 | 2) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.dataTransfer) {
-      e.dataTransfer.dropEffect = 'move';
-    }
-    setDragOverGroup(group);
-  }, []);
+    const handleMouseMove = (ev: MouseEvent) => {
+      const ds = dragStateRef.current;
+      if (!ds) return;
+      if (!ds.active) {
+        const dx = ev.clientX - ds.startX;
+        const dy = ev.clientY - ds.startY;
+        if (Math.sqrt(dx * dx + dy * dy) < 5) return;
+        ds.active = true;
+      }
+      const info = getInsertInfo(ev.clientX, ev.clientY);
+      if (!info) {
+        setDragOver(null);
+        return;
+      }
+      // Same group: hide indicator when hovering over current position or immediate neighbour
+      if (info.group === ds.group) {
+        const groupTabs = info.group === 1
+          ? tabs.filter((t) => t.group === 1 || !t.group)
+          : tabs.filter((t) => t.group === 2);
+        const currentIndex = groupTabs.findIndex((t) => t.id === ds.tabId);
+        if (info.index === currentIndex || info.index === currentIndex + 1) {
+          setDragOver(null);
+          return;
+        }
+      }
+      setDragOver(info);
+    };
 
-  const handleDragLeave = useCallback((e: React.DragEvent) => {
-    const rect = (e.currentTarget as HTMLDivElement).getBoundingClientRect();
-    const x = e.clientX;
-    const y = e.clientY;
-    if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-      setDragOverGroup(null);
-    }
-  }, []);
+    const handleMouseUp = (ev: MouseEvent) => {
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
+      const ds = dragStateRef.current;
+      dragStateRef.current = null;
+      setDragOver(null);
+      if (!ds || !ds.active) return;
 
-  const handleDrop = useCallback((e: React.DragEvent, group: 1 | 2) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragOverGroup(null);
-    const tabId = draggedTabIdRef.current;
-    draggedTabIdRef.current = null;
-    if (tabId && onMoveTabToGroup) {
-      onMoveTabToGroup(tabId, group);
-    }
-  }, [onMoveTabToGroup]);
+      const info = getInsertInfo(ev.clientX, ev.clientY);
+      if (!info) return;
+
+      if (info.group === ds.group) {
+        const groupTabs = info.group === 1
+          ? tabs.filter((t) => t.group === 1 || !t.group)
+          : tabs.filter((t) => t.group === 2);
+        const currentIndex = groupTabs.findIndex((t) => t.id === ds.tabId);
+        if (info.index === currentIndex || info.index === currentIndex + 1) return;
+
+        const globalCurrentIndex = tabs.findIndex((t) => t.id === ds.tabId);
+        const globalTargetIndex = globalCurrentIndex + (info.index - currentIndex);
+        onReorderTab?.(ds.tabId, globalTargetIndex);
+      } else {
+        onMoveTabToGroup?.(ds.tabId, info.group);
+      }
+    };
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  }, [tabs, onReorderTab, onMoveTabToGroup, getInsertInfo]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent, tabId: string, group: 1 | 2) => {
     e.preventDefault();
@@ -302,8 +376,9 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     return (
       <div
         key={tab.id}
-        draggable
-        onDragStart={(e) => handleDragStart(e, tab.id)}
+        data-tab-id={tab.id}
+        data-group={group}
+        onMouseDown={(e) => handleMouseDown(e, tab.id, group)}
         onClick={() => handleTabClick(tab.id, group)}
         onContextMenu={(e) => handleContextMenu(e, tab.id, group)}
         className={`
@@ -403,15 +478,12 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       )}
       <div
         ref={scrollRef}
+        data-group={group}
         className={`flex overflow-x-auto scrollbar-hide flex-1 pt-[2px] transition-colors duration-150 ${
-          dragOverGroup === group ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
+          dragOver?.group === group ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
         }`}
         onScroll={(e) => checkScroll(e.currentTarget, setter)}
         onDoubleClick={() => handleBlankDoubleClick(group)}
-        onDragOver={(e) => handleDragOver(e, group)}
-        onDragEnter={(e) => handleDragEnter(e, group)}
-        onDragLeave={handleDragLeave}
-        onDrop={(e) => handleDrop(e, group)}
       >
         {groupTabs.map((tab) => renderTab(tab, group))}
       </div>
@@ -454,6 +526,14 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         <>
           {renderScrollArea(group1Tabs, 1, g1ScrollRef, g1Scroll, setG1Scroll)}
         </>
+      )}
+
+      {/* Drag drop indicator */}
+      {dragOver && (
+        <div
+          className="fixed top-0 bottom-0 w-[2px] bg-blue-500 z-50 pointer-events-none"
+          style={{ left: dragOver.x }}
+        />
       )}
 
       {contextMenu?.visible && (

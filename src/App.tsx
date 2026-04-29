@@ -77,6 +77,7 @@ function App() {
   const markTabSaved = useEditorStore((s) => s.markTabSaved);
   const renameTab = useEditorStore((s) => s.renameTab);
   const moveTabToGroup = useEditorStore((s) => s.moveTabToGroup);
+  const reorderTab = useEditorStore((s) => s.reorderTab);
   const setReadMode = useEditorStore((s) => s.setReadMode);
 
   const openFile = useFileOpener();
@@ -714,6 +715,7 @@ function App() {
             onNewFile={handleNewFile}
             onNewFileInGroup={handleNewFileInGroup}
             onMoveTabToGroup={moveTabToGroup}
+            onReorderTab={reorderTab}
             onCloseTabs={handleCloseTabs}
             onRenameTab={handleRenameTab}
           />
