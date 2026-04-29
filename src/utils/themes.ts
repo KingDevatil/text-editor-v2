@@ -41,6 +41,9 @@ export const lightTheme: Extension = EditorView.theme(
     '.cm-selectionBackground': {
       backgroundColor: 'rgba(128, 128, 128, 0.25)',
     },
+    '.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'rgba(128, 128, 128, 0.35)',
+    },
     '.cm-searchMatch': {
       backgroundColor: '#a8ac94',
     },
@@ -85,6 +88,9 @@ export const darkTheme: Extension = EditorView.theme(
     },
     '.cm-selectionBackground': {
       backgroundColor: 'rgba(160, 160, 160, 0.3)',
+    },
+    '.cm-focused > .cm-scroller > .cm-selectionLayer .cm-selectionBackground': {
+      backgroundColor: 'rgba(160, 160, 160, 0.45)',
     },
     '.cm-searchMatch': {
       backgroundColor: '#515c6a',

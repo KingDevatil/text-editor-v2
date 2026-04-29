@@ -88,13 +88,17 @@ input, textarea, select {
   background-color: rgba(180, 180, 180, 0.4);
 }
 
-/* Browser native ::selection in CM6 editor */
-.cm-content ::selection {
-  background-color: rgba(100, 100, 100, 0.35);
+/* Browser native ::selection in CM6 editor.
+   drawSelection() includes hideNativeSelection which forces
+   .cm-line ::selection to transparent !important.
+   We override it with a more specific selector so native selection
+   remains visible alongside drawSelection's decorative layer. */
+.cm-editor .cm-line ::selection {
+  background-color: rgba(100, 100, 100, 0.35) !important;
 }
 
-.dark .cm-content ::selection {
-  background-color: rgba(180, 180, 180, 0.4);
+.dark .cm-editor .cm-line ::selection {
+  background-color: rgba(180, 180, 180, 0.4) !important;
 }
 
 /* Force line-wrapping white-space in case CM6 default theme doesn't apply */
