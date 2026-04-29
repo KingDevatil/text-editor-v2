@@ -261,6 +261,15 @@ input[type="range"]::-webkit-slider-thumb {
 
 
 /* ── Selection Background (drawSelection layer) ───────────────── */
+/* CRITICAL FIX: cm-selectionLayer defaults to z-index below text.
+   For rectangular selections there is NO native ::selection, so
+   the decorative layer MUST be above text to be visible.
+   We force position + z-index here. */
+.cm-selectionLayer {
+  position: absolute !important;
+  z-index: 2 !important;
+}
+
 /* Force background color on drawSelection's decorative layer.
    EditorView.theme() styles may be scoped in a way that doesn't
    always match, so we use direct CSS with !important. */
