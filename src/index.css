@@ -90,14 +90,14 @@ input, textarea, select {
 
 /* Browser native ::selection in CM6 editor.
    drawSelection() includes hideNativeSelection which forces
-   .cm-line ::selection to transparent !important.
-   We override it with a more specific selector so native selection
+   .cm-focused > .cm-scroller > .cm-content ::selection to transparent !important.
+   We override it with a MORE specific selector so native selection
    remains visible alongside drawSelection's decorative layer. */
-.cm-editor .cm-line ::selection {
+.cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
   background-color: rgba(100, 100, 100, 0.35) !important;
 }
 
-.dark .cm-editor .cm-line ::selection {
+.dark .cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
   background-color: rgba(180, 180, 180, 0.4) !important;
 }
 
