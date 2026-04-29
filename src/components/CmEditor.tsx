@@ -1,6 +1,6 @@
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { Undo, Redo, Scissors, Copy, ClipboardPaste, AlignLeft, Braces, Map, WrapText, Space, GitCompare, X, FileMinus, Crosshair, FolderOpen } from 'lucide-react';
-import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers, highlightActiveLineGutter, highlightActiveLine, highlightWhitespace, highlightTrailingWhitespace, scrollPastEnd as scrollPastEndExt, rectangularSelection, crosshairCursor } from '@codemirror/view';
 import { EditorState, Compartment, type Extension } from '@codemirror/state';
 import { defaultKeymap, history, historyKeymap, undo, redo, selectAll, indentMore, indentLess } from '@codemirror/commands';
 import { highlightSelectionMatches } from '@codemirror/search';
@@ -98,6 +98,9 @@ function buildBaseExtensions(
 ): Extension[] {
   const exts: Extension[] = [
     history(),
+    EditorState.allowMultipleSelections.of(true),
+    rectangularSelection(),
+    crosshairCursor(),
     keymap.of([...defaultKeymap, ...historyKeymap]),
     keymap.of([
       { key: 'Tab', run: indentMore, shift: indentLess },
