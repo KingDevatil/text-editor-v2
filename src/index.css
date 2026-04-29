@@ -305,16 +305,16 @@ input[type="range"]::-webkit-slider-thumb {
 }
 
 .cm-selectionMatch-main {
-  background-color: rgba(128, 128, 128, 0.42);
+  background-color: rgba(128, 128, 128, 0.28);
   border-radius: 2px;
 }
 
 .dark .cm-selectionMatch {
-  background-color: rgba(160, 160, 160, 0.15);
+  background-color: rgba(160, 160, 160, 0.18);
 }
 
 .dark .cm-selectionMatch-main {
-  background-color: rgba(160, 160, 160, 0.45);
+  background-color: rgba(160, 160, 160, 0.32);
   border-radius: 2px;
 }
 
