@@ -270,6 +270,7 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
         return {
           splitMode: false,
           tabs: state.tabs.map((t) => ({ ...t, group: 1 as 1 })),
+          activeGroup1TabId: state.activeTabId,
           activeGroup2TabId: null,
         };
       }
