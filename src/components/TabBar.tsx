@@ -66,6 +66,11 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
     startY: number;
     active: boolean;
   } | null>(null);
+  const dragInfoRef = useRef<{
+    group: 1 | 2;
+    index: number;
+    x: number;
+  } | null>(null);
   const [dragOver, setDragOver] = useState<{
     group: 1 | 2;
     index: number;
@@ -139,24 +144,35 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   }, [onNewFileInGroup]);
 
   // ---- Mouse-based drag & drop (replaces HTML5 drag/drop) ----
-  const getInsertInfo = useCallback((clientX: number, clientY: number) => {
-    const el = document.elementFromPoint(clientX, clientY);
+  const getInsertInfo = useCallback((clientX: number, _clientY: number) => {
+    // Determine which group container the pointer is inside by checking rects directly.
+    // This avoids relying on elementFromPoint which can behave oddly in some WebViews.
     let targetGroup: 1 | 2 | null = null;
-    let node: Element | null = el;
-    while (node) {
-      if (node instanceof HTMLElement) {
-        const g = node.dataset.group;
-        if (g === '1' || g === '2') {
-          targetGroup = parseInt(g, 10) as 1 | 2;
-          break;
-        }
-      }
-      node = node.parentElement;
-    }
-    if (!targetGroup || !node) return null;
+    let container: HTMLElement | null = null;
 
-    const container = node as HTMLElement;
-    const tabEls = Array.from(container.querySelectorAll<HTMLElement>('[data-tab-id]'));
+    const g1 = g1ScrollRef.current;
+    const g2 = g2ScrollRef.current;
+    if (g1) {
+      const r = g1.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right) {
+        targetGroup = 1;
+        container = g1;
+      }
+    }
+    if (!container && g2) {
+      const r = g2.getBoundingClientRect();
+      if (clientX >= r.left && clientX <= r.right) {
+        targetGroup = 2;
+        container = g2;
+      }
+    }
+
+    if (!targetGroup || !container) return null;
+
+    // Collect tab elements from container.children directly.
+    const tabEls = Array.from(container.children).filter(
+      (c): c is HTMLElement => c instanceof HTMLElement && c.hasAttribute('data-tab-id')
+    );
     let targetIndex = 0;
     let indicatorX = container.getBoundingClientRect().left + 4;
 
@@ -202,6 +218,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         ds.active = true;
       }
       const info = getInsertInfo(ev.clientX, ev.clientY);
+      dragInfoRef.current = info;
       if (!info) {
         setDragOver(null);
         return;
@@ -220,15 +237,15 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       setDragOver(info);
     };
 
-    const handleMouseUp = (ev: MouseEvent) => {
+    const handleMouseUp = (_ev: MouseEvent) => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       const ds = dragStateRef.current;
       dragStateRef.current = null;
+      const info = dragInfoRef.current;
+      dragInfoRef.current = null;
       setDragOver(null);
       if (!ds || !ds.active) return;
-
-      const info = getInsertInfo(ev.clientX, ev.clientY);
       if (!info) return;
 
       if (info.group === ds.group) {
