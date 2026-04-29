@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { EditorTab, Language, Encoding } from '../types';
+import type { EditorTab, Language, Encoding, ThemeMode, PartialThemeColors, ThemeColors } from '../types';
 import { EXT_TO_LANGUAGE } from '../types';
 import { deleteEditorState } from './useEditorStatePool';
 
@@ -17,7 +17,10 @@ function getLanguageFromFileName(fileName: string): Language {
 const SETTINGS_KEY = 'te2-settings';
 
 interface PersistedSettings {
-  theme?: 'vs' | 'vs-dark';
+  theme?: 'vs' | 'vs-dark' | 'light' | 'dark' | 'custom';
+  lightCustomColors?: PartialThemeColors;
+  darkCustomColors?: PartialThemeColors;
+  customColors?: PartialThemeColors;
   sidebarVisible?: boolean;
   findReplaceVisible?: boolean;
   unicodeHighlight?: boolean;
@@ -32,6 +35,13 @@ interface PersistedSettings {
   customKeybindings?: Record<string, string>;
 }
 
+function migrateThemeMode(theme: string | undefined): ThemeMode {
+  if (theme === 'vs') return 'light';
+  if (theme === 'vs-dark') return 'dark';
+  if (theme === 'light' || theme === 'dark' || theme === 'custom') return theme;
+  return 'dark';
+}
+
 function loadSettings(): PersistedSettings {
   try {
     return JSON.parse(localStorage.getItem(SETTINGS_KEY) || '{}');
@@ -44,6 +54,9 @@ function saveSettings(state: EditorState & EditorActions) {
   try {
     const payload: PersistedSettings = {
       theme: state.theme,
+      lightCustomColors: state.lightCustomColors,
+      darkCustomColors: state.darkCustomColors,
+      customColors: state.customColors,
       sidebarVisible: state.sidebarVisible,
       findReplaceVisible: state.findReplaceVisible,
       unicodeHighlight: state.unicodeHighlight,
@@ -68,7 +81,10 @@ interface EditorState {
   activeTabId: string | null;
   activeGroup1TabId: string | null;
   activeGroup2TabId: string | null;
-  theme: 'vs' | 'vs-dark';
+  theme: ThemeMode;
+  lightCustomColors: PartialThemeColors;
+  darkCustomColors: PartialThemeColors;
+  customColors: PartialThemeColors;
   sidebarVisible: boolean;
   findReplaceVisible: boolean;
   unicodeHighlight: boolean;
@@ -95,7 +111,13 @@ interface EditorActions {
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
   setActiveGroup2TabId: (id: string | null) => void;
-  setTheme: (theme: 'vs' | 'vs-dark' | ((prev: 'vs' | 'vs-dark') => 'vs' | 'vs-dark')) => void;
+  setTheme: (theme: ThemeMode | ((prev: ThemeMode) => ThemeMode)) => void;
+  setLightCustomColor: (key: keyof ThemeColors, value: string) => void;
+  setDarkCustomColor: (key: keyof ThemeColors, value: string) => void;
+  setCustomColor: (key: keyof ThemeColors, value: string) => void;
+  resetLightCustomColors: () => void;
+  resetDarkCustomColors: () => void;
+  resetCustomColors: () => void;
   setSidebarVisible: (visible: boolean) => void;
   setFindReplaceVisible: (visible: boolean) => void;
   setUnicodeHighlight: (highlight: boolean) => void;
@@ -130,7 +152,10 @@ const useEditorStore = create<EditorState & EditorActions>((set) => ({
   activeTabId: null,
   activeGroup1TabId: null,
   activeGroup2TabId: null,
-  theme: loaded.theme ?? 'vs-dark',
+  theme: migrateThemeMode(loaded.theme) ?? 'dark',
+  lightCustomColors: loaded.lightCustomColors ?? {},
+  darkCustomColors: loaded.darkCustomColors ?? {},
+  customColors: loaded.customColors ?? {},
   sidebarVisible: loaded.sidebarVisible ?? true,
   findReplaceVisible: loaded.findReplaceVisible ?? false,
   unicodeHighlight: loaded.unicodeHighlight ?? false,
@@ -400,6 +425,25 @@ const useEditorStore = create<EditorState & EditorActions>((set) => ({
       set({ theme });
     }
   },
+
+  setLightCustomColor: (key, value) =>
+    set((state) => ({
+      lightCustomColors: { ...state.lightCustomColors, [key]: value },
+    })),
+
+  setDarkCustomColor: (key, value) =>
+    set((state) => ({
+      darkCustomColors: { ...state.darkCustomColors, [key]: value },
+    })),
+
+  setCustomColor: (key, value) =>
+    set((state) => ({
+      customColors: { ...state.customColors, [key]: value },
+    })),
+
+  resetLightCustomColors: () => set({ lightCustomColors: {} }),
+  resetDarkCustomColors: () => set({ darkCustomColors: {} }),
+  resetCustomColors: () => set({ customColors: {} }),
 
   setSidebarVisible: (visible) => set({ sidebarVisible: visible }),
   setFindReplaceVisible: (visible) => set({ findReplaceVisible: visible }),

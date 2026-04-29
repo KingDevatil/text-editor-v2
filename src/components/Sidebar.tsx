@@ -1,5 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
-import { FileText, Settings, ChevronRight, ChevronDown, Folder, FolderOpen, RotateCcw, FolderOpenIcon, Star, HelpCircle } from 'lucide-react';
+import { FileText, Settings, ChevronRight, ChevronDown, Folder, FolderOpen, RotateCcw, FolderOpenIcon, Star, HelpCircle, Palette } from 'lucide-react';
+import ThemeEditor from './ThemeEditor';
 import { invoke } from '@tauri-apps/api/core';
 import type { DirEntry, EditorTab } from '../types';
 
@@ -52,14 +53,14 @@ const TreeNode: React.FC<TreeNodeProps> = ({
     return (
       <div>
         <div
-          className="flex items-center gap-1 rounded-md px-2 py-1 cursor-pointer transition-colors hover:bg-gray-200/60 dark:hover:bg-gray-800/60 text-gray-700 dark:text-gray-300"
+          className="flex items-center gap-1 rounded-md px-2 py-1 cursor-pointer transition-colors hover:bg-[var(--te-bg-tertiary)] text-[var(--te-text-primary)]"
           style={{ paddingLeft: `${paddingLeft}px` }}
           onClick={() => onToggleDir(entry.path)}
         >
           {isExpanded ? (
-            <ChevronDown size={14} className="text-gray-400 shrink-0" />
+            <ChevronDown size={14} className="text-[var(--te-text-secondary)] shrink-0" />
           ) : (
-            <ChevronRight size={14} className="text-gray-400 shrink-0" />
+            <ChevronRight size={14} className="text-[var(--te-text-secondary)] shrink-0" />
           )}
           {isExpanded ? (
             <FolderOpen size={14} className="text-amber-500 shrink-0" />
@@ -92,16 +93,16 @@ const TreeNode: React.FC<TreeNodeProps> = ({
 
   return (
     <div
-      className={`flex items-center gap-1.5 rounded-md px-2 py-1 cursor-pointer transition-colors text-gray-700 dark:text-gray-300 ${
+      className={`flex items-center gap-1.5 rounded-md px-2 py-1 cursor-pointer transition-colors text-[var(--te-text-primary)] ${
         isOpen
-          ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300'
-          : 'hover:bg-gray-200/60 dark:hover:bg-gray-800/60'
+          ? 'bg-[color-mix(in_srgb,var(--te-primary)_10%,transparent)] text-[var(--te-primary)]'
+          : 'hover:bg-[var(--te-bg-tertiary)]'
       }`}
       style={{ paddingLeft: `${paddingLeft + 18}px` }}
       onClick={() => onOpenFile(entry.path)}
       title={entry.path}
     >
-      <FileText size={13} className="text-gray-400 shrink-0" />
+      <FileText size={13} className="text-[var(--te-text-secondary)] shrink-0" />
       <span className="text-sm truncate select-none">{entry.name}</span>
     </div>
   );
@@ -129,6 +130,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
   onOpenHelp,
 }) => {
   const [activeSection, setActiveSection] = useState<'files' | 'settings'>('files');
+  const [showThemeEditor, setShowThemeEditor] = useState(false);
   const [expandedDirs, setExpandedDirs] = useState<Set<string>>(new Set());
   const [dirCache, setDirCache] = useState<Map<string, DirEntry[]>>(new Map());
 
@@ -199,22 +201,21 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
 
   const sectionBtnClass = (active: boolean) =>
     `relative flex-1 flex items-center justify-center gap-1.5 py-2.5 text-xs font-medium transition-colors ${
-      active
-        ? 'text-blue-600 dark:text-blue-400'
-        : 'text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
+      active ? '' : 'hover:text-[var(--te-text-primary)]'
     }`;
 
   const rootEntries = projectPath ? dirCache.get(projectPath) || [] : [];
 
   return (
     <div
-      className="flex flex-col border-r border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900"
-      style={{ width: `${width}px`, minWidth: `${width}px` }}
+      className="flex flex-col border-r"
+      style={{ width: `${width}px`, minWidth: `${width}px`, backgroundColor: 'var(--te-bg-secondary)', borderColor: 'var(--te-border)' }}
     >
-      <div className="flex items-center border-b border-gray-200 dark:border-gray-700/80 relative">
+      <div className="flex items-center border-b relative" style={{ borderColor: 'var(--te-border)' }}>
         <button
           onClick={() => setActiveSection('files')}
           className={sectionBtnClass(activeSection === 'files')}
+          style={{ color: activeSection === 'files' ? 'var(--te-primary)' : 'var(--te-text-secondary)' }}
         >
           <FolderOpen size={14} />
           文件
@@ -222,15 +223,17 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
         <button
           onClick={() => setActiveSection('settings')}
           className={sectionBtnClass(activeSection === 'settings')}
+          style={{ color: activeSection === 'settings' ? 'var(--te-primary)' : 'var(--te-text-secondary)' }}
         >
           <Settings size={14} />
           设置
         </button>
         <div
-          className="absolute bottom-0 h-0.5 bg-blue-500 rounded-full transition-all duration-200"
+          className="absolute bottom-0 h-0.5 rounded-full transition-all duration-200"
           style={{
             width: '50%',
             left: activeSection === 'files' ? '0%' : '50%',
+            backgroundColor: 'var(--te-primary)',
           }}
         />
       </div>
@@ -239,19 +242,20 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
         {activeSection === 'files' && (
           <div className="text-sm">
             {/* Project header */}
-            <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700/80">
+            <div className="px-3 py-2 border-b" style={{ borderColor: 'var(--te-border)' }}>
               {projectPath ? (
                 <div className="space-y-1.5">
                   <div className="flex items-center gap-1.5">
                     <FolderOpenIcon size={14} className="text-amber-500 shrink-0" />
-                    <span className="text-xs font-medium text-gray-500 dark:text-gray-400 truncate" title={projectPath}>
+                    <span className="text-xs font-medium truncate" style={{ color: 'var(--te-text-secondary)' }} title={projectPath}>
                       {projectPath.split(/[\\/]/).pop() || projectPath}
                     </span>
                   </div>
                   <div className="flex items-center gap-1">
                     <button
                       onClick={onOpenFolder}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] rounded border transition-colors hover:bg-[var(--te-bg-secondary)]"
+                      style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)', color: 'var(--te-text-primary)' }}
                       title="打开其他文件夹"
                     >
                       <FolderOpenIcon size={10} />
@@ -259,14 +263,16 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
                     </button>
                     <button
                       onClick={handleRefresh}
-                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      className="flex-1 flex items-center justify-center gap-1 px-2 py-1 text-[10px] rounded border transition-colors hover:bg-[var(--te-bg-secondary)]"
+                      style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)', color: 'var(--te-text-primary)' }}
                     >
                       <RotateCcw size={10} />
                       刷新
                     </button>
                     <button
                       onClick={handleCloseFolder}
-                      className="flex-1 px-2 py-1 text-[10px] rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+                      className="flex-1 px-2 py-1 text-[10px] rounded border transition-colors hover:bg-[var(--te-bg-secondary)]"
+                      style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)', color: 'var(--te-text-primary)' }}
                     >
                       关闭
                     </button>
@@ -275,7 +281,10 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
               ) : (
                 <button
                   onClick={onOpenFolder}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors font-medium"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg transition-colors font-medium"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--te-primary) 10%, transparent)', color: 'var(--te-primary)' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--te-primary) 15%, transparent)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--te-primary) 10%, transparent)'; }}
                 >
                   <FolderOpenIcon size={14} />
                   打开文件夹
@@ -300,14 +309,14 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
                     />
                   ))
                 ) : (
-                  <div className="text-center py-4 text-xs text-gray-400 dark:text-gray-500">
+                  <div className="text-center py-4 text-xs" style={{ color: 'var(--te-text-secondary)' }}>
                     空文件夹
                   </div>
                 )
               ) : (
                 <div className="text-center py-8 px-3">
-                  <Folder size={32} className="mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                  <p className="text-xs text-gray-400 dark:text-gray-500">
+                  <Folder size={32} className="mx-auto mb-2" style={{ color: 'color-mix(in srgb, var(--te-text-secondary) 50%, transparent)' }} />
+                  <p className="text-xs" style={{ color: 'var(--te-text-secondary)' }}>
                     打开一个文件夹<br />开始浏览项目文件
                   </p>
                 </div>
@@ -317,79 +326,82 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
         )}
 
         {activeSection === 'settings' && (
-          <div className="space-y-4 text-sm text-gray-700 dark:text-gray-200 p-3">
+          <div className="space-y-4 text-sm p-3" style={{ color: 'var(--te-text-primary)' }}>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--te-text-secondary)' }}>
                 编辑器设置
               </label>
-              <div className="space-y-2.5 bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700/50">
+              <div className="space-y-2.5 rounded-lg p-3 border" style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}>
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">全角半角检测</span>
+                  <span className="text-sm text-[var(--te-text-primary)] transition-colors">全角半角检测</span>
                   <input
                     type="checkbox"
                     checked={unicodeHighlight}
                     onChange={onToggleUnicodeHighlight}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]"
                   />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">显示行号</span>
-                  <input type="checkbox" defaultChecked className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500" />
+                  <span className="text-sm text-[var(--te-text-primary)] transition-colors">显示行号</span>
+                  <input type="checkbox" defaultChecked className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]" />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">自动换行</span>
+                  <span className="text-sm text-[var(--te-text-primary)] transition-colors">自动换行</span>
                   <input
                     type="checkbox"
                     checked={wordWrap}
                     onChange={onToggleWordWrap}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]"
                   />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">迷你地图</span>
+                  <span className="text-sm text-[var(--te-text-primary)] transition-colors">迷你地图</span>
                   <input
                     type="checkbox"
                     checked={minimapVisible}
                     onChange={onToggleMinimap}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]"
                   />
                 </label>
                 <label className="flex items-center justify-between cursor-pointer group" title="打开大文件时自动禁用高亮、折叠等功能以提升性能">
-                  <span className="text-sm text-gray-600 dark:text-gray-300 group-hover:text-gray-900 dark:group-hover:text-gray-100 transition-colors">大文件性能优化</span>
+                  <span className="text-sm text-[var(--te-text-primary)] transition-colors">大文件性能优化</span>
                   <input
                     type="checkbox"
                     checked={largeFileOptimize}
                     onChange={onToggleLargeFileOptimize}
-                    className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+                    className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]"
                   />
                 </label>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--te-text-secondary)' }}>
                 应用设置
               </label>
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700/50">
+              <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}>
                 <button
                   onClick={onRegisterDefaultApp}
                   disabled={!onRegisterDefaultApp}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  style={{ backgroundColor: 'color-mix(in srgb, var(--te-primary) 10%, transparent)', color: 'var(--te-primary)' }}
+                  onMouseEnter={(e) => { if (!onRegisterDefaultApp) return; e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--te-primary) 15%, transparent)'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.backgroundColor = 'color-mix(in srgb, var(--te-primary) 10%, transparent)'; }}
                 >
                   <Star size={14} />
                   设为默认文本编辑器
                 </button>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 text-center">
+                <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--te-text-secondary)' }}>
                   注册为 .txt、.md、.js 等文件类型的默认打开方式
                 </p>
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--te-text-secondary)' }}>
                 字体大小
               </label>
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700/50">
+              <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}>
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600 dark:text-gray-300">{fontSize}px</span>
+                  <span className="text-sm text-[var(--te-text-primary)]">{fontSize}px</span>
                 </div>
                 <input
                   type="range"
@@ -402,19 +414,38 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
               </div>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wider">
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--te-text-secondary)' }}>
+                主题外观
+              </label>
+              <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}>
+                <button
+                  onClick={() => setShowThemeEditor(true)}
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg transition-colors font-medium hover:bg-[var(--te-bg-secondary)]"
+                  style={{ backgroundColor: 'var(--te-bg-tertiary)', color: 'var(--te-text-primary)' }}
+                >
+                  <Palette size={14} />
+                  编辑主题颜色
+                </button>
+                <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--te-text-secondary)' }}>
+                  自定义亮色、暗色和独立主题的颜色配置
+                </p>
+              </div>
+            </div>
+            <div>
+              <label className="block text-xs font-semibold mb-2 uppercase tracking-wider" style={{ color: 'var(--te-text-secondary)' }}>
                 帮助
               </label>
-              <div className="bg-white dark:bg-gray-800/50 rounded-lg p-3 border border-gray-100 dark:border-gray-700/50">
+              <div className="rounded-lg p-3 border" style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}>
                 <button
                   onClick={onOpenHelp}
                   disabled={!onOpenHelp}
-                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg bg-gray-50 dark:bg-gray-700/50 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="w-full flex items-center justify-center gap-1.5 px-3 py-2 text-xs rounded-lg transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed hover:bg-[var(--te-bg-secondary)]"
+                  style={{ backgroundColor: 'var(--te-bg-tertiary)', color: 'var(--te-text-primary)' }}
                 >
                   <HelpCircle size={14} />
                   使用说明
                 </button>
-                <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1.5 text-center">
+                <p className="text-[10px] mt-1.5 text-center" style={{ color: 'var(--te-text-secondary)' }}>
                   查看编辑器快捷键与功能说明
                 </p>
               </div>
@@ -422,6 +453,7 @@ const Sidebar: React.FC<SidebarProps> = React.memo(({
           </div>
         )}
       </div>
+      {showThemeEditor && <ThemeEditor onClose={() => setShowThemeEditor(false)} />}
     </div>
   );
 });

@@ -25,7 +25,7 @@ interface ScrollState {
 }
 
 const arrowBtnClass =
-  'absolute top-0 bottom-0 z-10 flex items-center justify-center w-7 h-9 bg-gray-50/90 dark:bg-gray-900/90 backdrop-blur-sm text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors cursor-pointer';
+  'absolute top-0 bottom-0 z-10 flex items-center justify-center w-7 h-9 backdrop-blur-sm transition-colors cursor-pointer bg-[color-mix(in_srgb,var(--te-bg-secondary)_90%,transparent)] text-[var(--te-text-secondary)] hover:text-[var(--te-text-primary)]';
 
 const TabBar: React.FC<TabBarProps> = React.memo(({
   tabs,
@@ -400,10 +400,10 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
           group relative flex items-center gap-2 px-3.5 min-w-[120px] max-w-[220px] cursor-pointer select-none flex-shrink-0
           text-sm transition-all duration-100
           ${isActive && isGroupActive
-            ? 'bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 z-10'
+            ? 'bg-[var(--te-tab-active-bg)] text-[var(--te-text-primary)] z-10'
             : isGroupActive
-            ? 'bg-gray-100/80 dark:bg-gray-800/60 text-gray-800 dark:text-gray-200'
-            : 'bg-gray-100/40 dark:bg-gray-800/20 text-gray-500 dark:text-gray-400 hover:bg-gray-100/70 dark:hover:bg-gray-700/40 hover:text-gray-700 dark:hover:text-gray-300'
+            ? 'bg-[color-mix(in_srgb,var(--te-tab-active-bg)_80%,transparent)] text-[var(--te-text-primary)]'
+            : 'bg-[color-mix(in_srgb,var(--te-tab-active-bg)_40%,transparent)] text-[var(--te-text-secondary)] hover:bg-[color-mix(in_srgb,var(--te-tab-active-bg)_70%,transparent)] hover:text-[var(--te-text-primary)]'
           }
         `}
         style={{
@@ -412,7 +412,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         }}
       >
         {isActive && isGroupActive && (
-          <div className="absolute top-0 left-2 right-2 h-[2px] bg-gradient-to-r from-blue-500 to-blue-400 rounded-full" />
+          <div className="absolute top-0 left-2 right-2 h-[2px] rounded-full" style={{ background: 'linear-gradient(to right, var(--te-primary), color-mix(in srgb, var(--te-primary) 70%, transparent))' }} />
         )}
         {renamingTab === tab.id ? (
           <input
@@ -438,12 +438,12 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
               setRenamingTab(null);
             }}
             onClick={(e) => e.stopPropagation()}
-            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-blue-400 text-gray-900 dark:text-gray-100"
+            className="flex-1 min-w-0 text-sm bg-transparent outline-none border-b border-[var(--te-primary)] text-[var(--te-text-primary)]"
           />
         ) : (
           <span className={`truncate flex-1 ${isDirty ? 'italic' : ''}`}>
             {isDirty && (
-              <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 mr-1.5 align-middle" />
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-[var(--te-primary)] mr-1.5 align-middle" />
             )}
             {tab.title}
           </span>
@@ -459,13 +459,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
             }
             onTabClose(tab.id);
           }}
-          className={`
-            p-0.5 rounded-md transition-all duration-100
-            ${isActive && isGroupActive
-              ? 'text-gray-400 hover:text-gray-700 dark:text-gray-500 dark:hover:text-gray-200 hover:bg-gray-200 dark:hover:bg-gray-700'
-              : 'text-gray-300 hover:text-gray-600 dark:text-gray-600 dark:hover:text-gray-300 hover:bg-gray-200/50 dark:hover:bg-gray-700/50'
-            }
-          `}
+          className="p-0.5 rounded-md transition-all duration-100 text-[var(--te-text-secondary)] hover:text-[var(--te-error)] hover:bg-[color-mix(in_srgb,var(--te-error)_10%,transparent)]"
           title="关闭"
         >
           <X size={12} strokeWidth={2.5} />
@@ -495,7 +489,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         ref={scrollRef}
         data-group={group}
         className={`flex overflow-x-auto scrollbar-hide flex-1 pt-[2px] transition-colors duration-150 ${
-          dragOver?.group === group ? 'bg-blue-50/50 dark:bg-blue-900/20' : ''
+          dragOver?.group === group ? 'bg-[color-mix(in_srgb,var(--te-primary)_10%,transparent)]' : ''
         }`}
         onScroll={(e) => checkScroll(e.currentTarget, setter)}
         onDoubleClick={() => handleBlankDoubleClick(group)}
@@ -517,7 +511,8 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   if (tabs.length === 0) {
     return (
       <div
-        className="h-9 border-b border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900 flex items-center px-4 text-sm text-gray-400 dark:text-gray-500 cursor-pointer hover:text-gray-500 dark:hover:text-gray-400 transition-colors"
+        className="h-9 border-b flex items-center px-4 text-sm cursor-pointer transition-colors hover:text-[var(--te-text-primary)]"
+        style={{ backgroundColor: 'var(--te-bg-secondary)', borderColor: 'var(--te-border)', color: 'var(--te-text-secondary)' }}
         onDoubleClick={() => onNewFile?.()}
       >
         <span className="flex-1">双击新建文件</span>
@@ -526,13 +521,13 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
   }
 
   return (
-    <div className="relative flex h-9 border-b border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+    <div className="relative flex h-9 border-b overflow-hidden" style={{ backgroundColor: 'var(--te-bg-secondary)', borderColor: 'var(--te-border)' }}>
       {splitMode ? (
         <div className="flex flex-1 overflow-hidden">
             <div className="w-1/2 flex flex-shrink-0 overflow-hidden">
               {renderScrollArea(group1Tabs, 1, g1ScrollRef, g1Scroll, setG1Scroll)}
             </div>
-            <div className="flex-shrink-0 w-px bg-gray-200 dark:bg-gray-800 self-stretch" />
+            <div className="flex-shrink-0 w-px bg-[var(--te-border)] self-stretch" />
             <div className="w-1/2 flex flex-shrink-0 overflow-hidden">
               {renderScrollArea(group2Tabs, 2, g2ScrollRef, g2Scroll, setG2Scroll)}
             </div>
@@ -546,32 +541,32 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
       {/* Drag drop indicator */}
       {dragOver && (
         <div
-          className="fixed top-0 bottom-0 w-[2px] bg-blue-500 z-50 pointer-events-none"
+          className="fixed top-0 bottom-0 w-[2px] z-50 pointer-events-none bg-[var(--te-primary)]"
           style={{ left: dragOver.x }}
         />
       )}
 
       {contextMenu?.visible && (
         <div
-          className="fixed z-50 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-700 shadow-xl bg-white dark:bg-gray-800 py-1 text-sm"
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          className="fixed z-50 min-w-[180px] rounded-lg shadow-xl py-1 text-sm"
+          style={{ backgroundColor: 'var(--te-bg-tertiary)', border: '1px solid var(--te-border)', left: contextMenu.x, top: contextMenu.y }}
           onClick={(e) => e.stopPropagation()}
         >
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+            className="w-full text-left px-3 py-1.5 transition-colors text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)]"
             onClick={handleMenuClose}
           >
             关闭
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors"
+            className="w-full text-left px-3 py-1.5 transition-colors text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)]"
             onClick={handleMenuCloseOthers}
           >
             关闭其他页签
           </button>
-          <div className="my-1 border-t border-gray-100 dark:border-gray-700" />
+          <div className="my-1 border-t" style={{ borderColor: 'var(--te-border)' }} />
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full text-left px-3 py-1.5 transition-colors text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleMenuCloseLeft}
             disabled={(() => {
               const groupTabs = contextMenu.group === 1
@@ -584,7 +579,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
             关闭左侧页签
           </button>
           <button
-            className="w-full text-left px-3 py-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-full text-left px-3 py-1.5 transition-colors text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)] disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={handleMenuCloseRight}
             disabled={(() => {
               const groupTabs = contextMenu.group === 1

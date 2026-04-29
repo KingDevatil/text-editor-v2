@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useRef, useCallback } from 'react';
 import { marked } from 'marked';
+import { Copy, Clipboard } from 'lucide-react';
 import { getEditorContent } from '../hooks/useEditorStatePool';
 import { generateHeadingSlugs, slugify } from '../utils/slugify';
+import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 
 interface MarkdownPreviewProps {
   tabId: string;
@@ -32,6 +34,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
   }, [tabId]);
 
   const containerRef = useRef<HTMLDivElement>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const deferredContent = React.useDeferredValue(content);
   const html = useMemo(() => {
     const raw = marked.parse(deferredContent, { async: false }) as string;
@@ -39,7 +42,7 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     return htmlWithIds;
   }, [deferredContent]);
 
-  const isDark = theme === 'vs-dark';
+  const isDark = theme === 'dark';
 
   // Intercept anchor clicks inside the overflow container
   const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -61,23 +64,63 @@ const MarkdownPreview: React.FC<MarkdownPreviewProps> = React.memo(({ tabId, the
     }
   }, []);
 
+  const handleContextMenu = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    const selection = window.getSelection()?.toString() || '';
+    const items: ContextMenuItem[] = [
+      {
+        id: 'copy',
+        label: '复制',
+        icon: <Copy size={14} />,
+        disabled: !selection,
+        action: () => navigator.clipboard.writeText(selection),
+      },
+      {
+        id: 'select-all',
+        label: '全选',
+        icon: <Clipboard size={14} />,
+        action: () => {
+          const range = document.createRange();
+          if (containerRef.current) {
+            range.selectNodeContents(containerRef.current);
+            const sel = window.getSelection();
+            sel?.removeAllRanges();
+            sel?.addRange(range);
+          }
+        },
+      },
+    ];
+    setContextMenu({ x: e.clientX, y: e.clientY, items });
+  }, []);
+
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-full overflow-auto px-6 py-6"
-      style={{
-        backgroundColor: isDark ? '#0d1117' : '#ffffff',
-        userSelect: 'text',
-        WebkitUserSelect: 'text',
-      }}
-      onClick={handleClick}
-    >
+    <>
       <div
-        className={`prose max-w-none ${isDark ? 'prose-invert' : ''}`}
-        style={{ color: isDark ? '#a0aab4' : '#24292f' }}
-        dangerouslySetInnerHTML={{ __html: html }}
-      />
-    </div>
+        ref={containerRef}
+        className="w-full h-full overflow-auto px-6 py-6"
+        style={{
+          backgroundColor: 'var(--te-bg-primary)',
+          userSelect: 'text',
+          WebkitUserSelect: 'text',
+        }}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
+      >
+        <div
+          className={`prose max-w-none ${isDark ? 'prose-invert' : ''}`}
+          style={{ color: 'var(--te-text-primary)' }}
+          dangerouslySetInnerHTML={{ __html: html }}
+        />
+      </div>
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
+      )}
+    </>
   );
 });
 

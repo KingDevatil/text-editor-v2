@@ -93,21 +93,21 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, commands
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-[560px] max-w-[90vw] rounded-xl shadow-2xl border overflow-hidden bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
+      <div className="w-[560px] max-w-[90vw] rounded-xl shadow-2xl border overflow-hidden bg-[var(--te-bg-tertiary)] border-[var(--te-border)]">
         {/* Search input */}
-        <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-          <Search size={18} className="text-gray-400" />
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-[var(--te-border)]">
+          <Search size={18} className="text-[var(--te-text-secondary)]" />
           <input
             ref={inputRef}
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="输入命令或快捷键..."
-            className="flex-1 bg-transparent outline-none text-sm text-gray-800 dark:text-gray-100 placeholder-gray-400"
+            className="flex-1 bg-[var(--te-bg-primary)] outline-none text-sm text-[var(--te-text-primary)] placeholder-[var(--te-text-secondary)]"
           />
           <button
             onClick={onClose}
-            className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-gray-400"
+            className="p-1 rounded hover:bg-[var(--te-bg-secondary)] text-[var(--te-text-secondary)]"
           >
             <X size={14} />
           </button>
@@ -116,7 +116,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, commands
         {/* Command list */}
         <div ref={listRef} className="max-h-[320px] overflow-auto py-1">
           {filtered.length === 0 ? (
-            <div className="px-4 py-6 text-center text-sm text-gray-400">未找到匹配的命令</div>
+            <div className="px-4 py-6 text-center text-sm text-[var(--te-text-secondary)]">未找到匹配的命令</div>
           ) : (
             filtered.map((cmd, index) => (
               <button
@@ -127,14 +127,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, commands
                 }}
                 className={`w-full flex items-center gap-3 px-4 py-2.5 text-left text-sm transition-colors ${
                   index === selectedIndex
-                    ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300'
-                    : 'text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-700/50'
+                    ? 'bg-[color-mix(in_srgb,var(--te-primary)_10%,transparent)] text-[var(--te-primary)]'
+                    : 'text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)]'
                 }`}
               >
                 <span className="text-gray-400">{cmd.icon}</span>
                 <span className="flex-1">{cmd.label}</span>
                 {cmd.shortcut && (
-                  <kbd className="text-xs px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-400 font-mono">
+                  <kbd className="text-xs px-1.5 py-0.5 rounded bg-[var(--te-bg-secondary)] text-[var(--te-text-secondary)] font-mono">
                     {cmd.shortcut}
                   </kbd>
                 )}
@@ -144,7 +144,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ open, onClose, commands
         </div>
 
         {/* Footer hint */}
-        <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-700 text-[10px] text-gray-400 flex items-center justify-between">
+        <div className="px-4 py-2 border-t border-[var(--te-border)] text-[10px] text-[var(--te-text-secondary)] flex items-center justify-between">
           <span>↑↓ 选择 · Enter 执行 · Esc 关闭</span>
           <span>{filtered.length} 个命令</span>
         </div>

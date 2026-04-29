@@ -8,12 +8,14 @@ import {
   Search,
   Sun,
   Moon,
+  Palette,
   PanelLeft,
   Braces,
   BookOpen,
   Columns2,
   Eye,
 } from 'lucide-react';
+import type { ThemeMode } from '../types';
 
 interface ToolbarProps {
   onNewFile: () => void;
@@ -34,7 +36,7 @@ interface ToolbarProps {
   splitActive: boolean;
   canReadMode: boolean;
   readModeActive: boolean;
-  theme: string;
+  theme: ThemeMode;
 }
 
 const Toolbar: React.FC<ToolbarProps> = React.memo(({
@@ -58,59 +60,62 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
   readModeActive,
   theme,
 }) => {
-  const btnClass =
-    'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all duration-100 hover:bg-gray-200/80 dark:hover:bg-gray-700/80 text-gray-700 dark:text-gray-200 active:scale-95';
+  const btnBase =
+    'flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all duration-100 active:scale-95 hover:bg-[color-mix(in_srgb,var(--te-text-primary)_8%,transparent)]';
 
-  const activeBtnClass =
-    'bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 shadow-[inset_0_1px_2px_rgba(0,0,0,0.05)] dark:shadow-[inset_0_1px_2px_rgba(0,0,0,0.2)]';
+  const nextThemeIcon = theme === 'light' ? <Moon size={16} /> : theme === 'dark' ? <Palette size={16} /> : <Sun size={16} />;
+  const nextThemeLabel = theme === 'light' ? '切换暗色主题' : theme === 'dark' ? '切换自定义主题' : '切换亮色主题';
 
-  const dividerClass = 'w-px h-5 bg-gray-200 dark:bg-gray-700 mx-1';
-
-  const nextThemeIcon = theme === 'vs' ? <Moon size={16} /> : <Sun size={16} />;
-  const nextThemeLabel = theme === 'vs' ? '切换暗色主题' : '切换亮色主题';
+  const btnStyle: React.CSSProperties = { color: 'var(--te-text-primary)' };
+  const activeStyle: React.CSSProperties = {
+    backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)',
+    color: 'var(--te-primary)',
+  };
+  const dividerStyle: React.CSSProperties = { backgroundColor: 'var(--te-border)' };
 
   return (
-    <div className="flex items-center gap-1 px-3 h-11 border-b border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900">
+    <div className="flex items-center gap-1 px-3 h-11 border-b" style={{ backgroundColor: 'var(--te-bg-secondary)', borderColor: 'var(--te-border)' }}>
       {/* 最左侧：切换侧边栏 */}
       <div className="flex items-center gap-1">
-        <button className={btnClass} onClick={onToggleSidebar} title="切换侧边栏">
+        <button className={btnBase} style={btnStyle} onClick={onToggleSidebar} title="切换侧边栏">
           <PanelLeft size={16} />
         </button>
       </div>
 
-      <div className={dividerClass} />
+      <div className="w-px h-5 mx-1" style={dividerStyle} />
 
       {/* 文件操作 */}
       <div className="flex items-center gap-1">
-        <button className={btnClass} onClick={onNewFile} title="新建文件 (Ctrl+N)">
+        <button className={btnBase} style={btnStyle} onClick={onNewFile} title="新建文件 (Ctrl+N)">
           <FilePlus size={16} />
           <span className="hidden sm:inline font-medium">新建</span>
         </button>
-        <button className={btnClass} onClick={onOpenFile} title="打开文件 (Ctrl+O)">
+        <button className={btnBase} style={btnStyle} onClick={onOpenFile} title="打开文件 (Ctrl+O)">
           <FolderOpen size={16} />
           <span className="hidden sm:inline font-medium">打开</span>
         </button>
         {isTauri() && (
-          <button className={btnClass} onClick={onOpenFolder} title="打开文件夹">
+          <button className={btnBase} style={btnStyle} onClick={onOpenFolder} title="打开文件夹">
             <FolderTree size={16} />
             <span className="hidden sm:inline font-medium">文件夹</span>
           </button>
         )}
-        <button className={btnClass} onClick={onSaveFile} title="保存文件 (Ctrl+S)">
+        <button className={btnBase} style={btnStyle} onClick={onSaveFile} title="保存文件 (Ctrl+S)">
           <Save size={16} />
           <span className="hidden sm:inline font-medium">保存</span>
         </button>
       </div>
 
-      <div className={dividerClass} />
+      <div className="w-px h-5 mx-1" style={dividerStyle} />
 
       {/* 编辑操作 */}
       <div className="flex items-center gap-1">
-        <button className={btnClass} onClick={onToggleFindReplace} title="查找替换 (Ctrl+F)">
+        <button className={btnBase} style={btnStyle} onClick={onToggleFindReplace} title="查找替换 (Ctrl+F)">
           <Search size={16} />
         </button>
         <button
-          className={`${btnClass} ${!canFormat ? 'opacity-40 cursor-not-allowed active:scale-100' : ''}`}
+          className={`${btnBase} ${!canFormat ? 'opacity-40 cursor-not-allowed active:scale-100' : ''}`}
+          style={btnStyle}
           onClick={onFormat}
           disabled={!canFormat}
           title="格式化文档 (Shift+Alt+F)"
@@ -125,7 +130,8 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
       {/* 右侧：预览 + 分屏 + 主题切换 */}
       <div className="flex items-center gap-1">
         <button
-          className={`${btnClass} ${!canPreview || splitActive ? 'opacity-40 cursor-not-allowed active:scale-100' : ''} ${previewActive ? activeBtnClass : ''}`}
+          className={`${btnBase} ${!canPreview || splitActive ? 'opacity-40 cursor-not-allowed active:scale-100' : ''}`}
+          style={previewActive ? activeStyle : btnStyle}
           onClick={onTogglePreview}
           disabled={!canPreview || splitActive}
           title="Markdown 预览"
@@ -134,7 +140,8 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
           <span className="hidden sm:inline font-medium">预览</span>
         </button>
         <button
-          className={`${btnClass} ${!canReadMode ? 'opacity-40 cursor-not-allowed active:scale-100' : ''} ${readModeActive ? activeBtnClass : ''}`}
+          className={`${btnBase} ${!canReadMode ? 'opacity-40 cursor-not-allowed active:scale-100' : ''}`}
+          style={readModeActive ? activeStyle : btnStyle}
           onClick={onToggleReadMode}
           disabled={!canReadMode}
           title="Markdown 阅读模式 (Ctrl+Shift+V)"
@@ -143,15 +150,22 @@ const Toolbar: React.FC<ToolbarProps> = React.memo(({
           <span className="hidden sm:inline font-medium">阅读</span>
         </button>
         <button
-          className={`${btnClass} ${!canSplit || previewActive ? 'opacity-40 cursor-not-allowed active:scale-100' : ''} ${splitActive ? activeBtnClass : ''}`}
+          className={`${btnBase} ${!canSplit || previewActive ? 'opacity-40 cursor-not-allowed active:scale-100' : ''}`}
+          style={splitActive ? activeStyle : btnStyle}
           onClick={onToggleSplit}
           disabled={!canSplit || previewActive}
-          title="分屏编辑"
+          title={
+            !canSplit
+              ? '分屏编辑（需要至少 2 个标签页）'
+              : previewActive
+                ? '分屏编辑（与预览模式互斥，请先关闭预览）'
+                : '分屏编辑'
+          }
         >
           <Columns2 size={16} />
           <span className="hidden sm:inline font-medium">分屏</span>
         </button>
-        <button className={btnClass} onClick={onToggleTheme} title={nextThemeLabel}>
+        <button className={btnBase} style={btnStyle} onClick={onToggleTheme} title={nextThemeLabel}>
           {nextThemeIcon}
         </button>
       </div>

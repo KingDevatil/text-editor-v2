@@ -11,6 +11,8 @@ import { getEditorContent, updateEditorContent, getActiveView } from './hooks/us
 import { formatDocument, goToDefinition } from './utils/cmCommands';
 import { perf } from './utils/perf';
 import type { Encoding } from './types';
+import { resolveThemeColors } from './utils/themeResolver';
+import { injectThemeVars } from './utils/themeInjector';
 import Toolbar from './components/Toolbar';
 import TabBar from './components/TabBar';
 import FindReplace from './components/FindReplace';
@@ -30,6 +32,9 @@ function App() {
   const activeGroup1TabId = useEditorStore((s) => s.activeGroup1TabId);
   const activeGroup2TabId = useEditorStore((s) => s.activeGroup2TabId);
   const theme = useEditorStore((s) => s.theme);
+  const lightCustomColors = useEditorStore((s) => s.lightCustomColors);
+  const darkCustomColors = useEditorStore((s) => s.darkCustomColors);
+  const customColors = useEditorStore((s) => s.customColors);
   const sidebarVisible = useEditorStore((s) => s.sidebarVisible);
   const findReplaceVisible = useEditorStore((s) => s.findReplaceVisible);
   const unicodeHighlight = useEditorStore((s) => s.unicodeHighlight);
@@ -400,8 +405,18 @@ function App() {
     }
   }, [tabs, renameTab]);
 
-  const handleToggleTheme = useCallback(() => {
-    setTheme((prev) => (prev === 'vs' ? 'vs-dark' : 'vs'));
+  // Inject CSS theme variables whenever theme or custom colors change
+  useEffect(() => {
+    const colors = resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors);
+    injectThemeVars(colors);
+  }, [theme, lightCustomColors, darkCustomColors, customColors]);
+
+  const handleCycleTheme = useCallback(() => {
+    setTheme((prev) => {
+      if (prev === 'light') return 'dark';
+      if (prev === 'dark') return 'custom';
+      return 'light';
+    });
   }, [setTheme]);
 
   const handleEditorChange = useCallback(
@@ -437,7 +452,7 @@ function App() {
     [activeTab, setTabEncoding]
   );
 
-  const isDark = theme === 'vs-dark';
+  const isDark = theme === 'dark';
 
   // Handle file drop using Tauri native drag-drop events
   useEffect(() => {
@@ -641,7 +656,7 @@ function App() {
     { id: 'find', label: '查找替换', shortcut: 'Ctrl+F', icon: <Search size={16} />, action: () => setFindReplaceVisible(!findReplaceVisible) },
     { id: 'format', label: '格式化文档', shortcut: 'Shift+Alt+F', icon: <Braces size={16} />, action: handleFormat },
     { id: 'sidebar', label: sidebarVisible ? '隐藏侧边栏' : '显示侧边栏', icon: <PanelLeft size={16} />, action: () => setSidebarVisible(!sidebarVisible) },
-    { id: 'theme', label: `切换主题 (${theme})`, icon: isDark ? <Sun size={16} /> : <Moon size={16} />, action: handleToggleTheme },
+    { id: 'theme', label: `切换主题 (${theme})`, icon: isDark ? <Sun size={16} /> : <Moon size={16} />, action: handleCycleTheme },
     { id: 'wordwrap', label: wordWrap ? '关闭自动换行' : '开启自动换行', icon: <WrapText size={16} />, action: () => useEditorStore.getState().setWordWrap(!wordWrap) },
     { id: 'whitespace', label: showWhitespace ? '隐藏空白字符' : '显示空白字符', icon: <Space size={16} />, action: () => useEditorStore.getState().setShowWhitespace(!showWhitespace) },
     { id: 'preview', label: previewVisible ? '关闭 Markdown 预览' : '开启 Markdown 预览', icon: <BookOpen size={16} />, action: () => setPreviewVisible(!previewVisible) },
@@ -660,10 +675,10 @@ function App() {
         }
       },
     }] : []),
-  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleToggleTheme, handleToggleSplit, handleToggleDiff, handleToggleReadMode, findReplaceVisible, setFindReplaceVisible, sidebarVisible, setSidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, setPreviewVisible, splitMode, diffMode, readMode, activeTab, theme]);
+  ], [handleNewFile, handleOpenFile, handleSaveFile, handleFormat, handleCycleTheme, handleToggleSplit, handleToggleDiff, handleToggleReadMode, findReplaceVisible, setFindReplaceVisible, sidebarVisible, setSidebarVisible, isDark, wordWrap, showWhitespace, previewVisible, setPreviewVisible, splitMode, diffMode, readMode, activeTab, theme]);
 
   return (
-    <div className={`flex flex-col h-screen ${isDark ? 'dark' : ''}`}>
+    <div className={`flex flex-col h-screen ${theme !== 'light' ? 'dark' : ''}`}>
       <input
         ref={fileInputRef}
         type="file"
@@ -680,7 +695,7 @@ function App() {
         onOpenFolder={handleOpenFolder}
         onSaveFile={handleSaveFile}
         onToggleFindReplace={() => setFindReplaceVisible(!findReplaceVisible)}
-        onToggleTheme={handleToggleTheme}
+        onToggleTheme={handleCycleTheme}
         onToggleSidebar={() => setSidebarVisible(!sidebarVisible)}
         onFormat={handleFormat}
         onTogglePreview={() => setPreviewVisible(!previewVisible)}
@@ -828,14 +843,14 @@ function App() {
                 tabId={activeTab.id}
                 theme={theme}
                 onExit={() => setReadMode(false)}
-                onToggleTheme={handleToggleTheme}
+                onToggleTheme={handleCycleTheme}
               />
             )}
           </div>
 
       {/* Editor Help overlay */}
       {showHelp && (
-        <EditorHelp onClose={() => setShowHelp(false)} isDark={isDark} />
+        <EditorHelp onClose={() => setShowHelp(false)} />
       )}
 
           <StatusBar

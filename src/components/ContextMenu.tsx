@@ -52,7 +52,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
   return (
     <div
       ref={menuRef}
-      className="fixed z-50 py-1.5 min-w-[180px] rounded-lg border border-gray-200 dark:border-gray-700 shadow-lg bg-white dark:bg-gray-800 animate-in fade-in zoom-in-95 duration-100"
+      className="fixed z-50 py-1.5 min-w-[180px] rounded-lg border border-[var(--te-border)] shadow-lg bg-[var(--te-bg-tertiary)] animate-in fade-in zoom-in-95 duration-100"
       style={{ left: posX, top: posY }}
       onContextMenu={(e) => e.preventDefault()}
     >
@@ -61,7 +61,7 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
           return (
             <div
               key={`divider-${index}`}
-              className="my-1 border-t border-gray-200 dark:border-gray-700"
+              className="my-1 border-t border-[var(--te-border)]"
             />
           );
         }
@@ -71,8 +71,8 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
             className={`w-full flex items-center gap-2.5 px-3 py-2 text-sm text-left transition-colors
               ${
                 item.disabled
-                  ? 'opacity-40 cursor-not-allowed text-gray-400 dark:text-gray-500'
-                  : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700/60 cursor-pointer'
+                  ? 'opacity-40 cursor-not-allowed text-[var(--te-text-secondary)]'
+                  : 'text-[var(--te-text-primary)] hover:bg-[var(--te-bg-secondary)] cursor-pointer'
               }`}
             onClick={() => {
               if (!item.disabled) {
@@ -82,12 +82,12 @@ const ContextMenu: React.FC<ContextMenuProps> = ({ x, y, items, onClose }) => {
             }}
             disabled={item.disabled}
           >
-            <span className="flex-shrink-0 text-gray-500 dark:text-gray-400">
+            <span className="flex-shrink-0 text-[var(--te-text-secondary)]">
               {item.icon}
             </span>
             <span className="flex-1">{item.label}</span>
             {item.shortcut && (
-              <span className="text-xs text-gray-400 dark:text-gray-500 ml-3">
+              <span className="text-xs text-[var(--te-text-secondary)] ml-3">
                 {item.shortcut}
               </span>
             )}

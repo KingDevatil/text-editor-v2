@@ -55,14 +55,14 @@ input, textarea, select {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
+  background: var(--te-scrollbar-thumb);
   border-radius: 5px;
   border: 2px solid transparent;
   background-clip: content-box;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
+  background: var(--te-scrollbar-thumb-hover);
   border: 2px solid transparent;
   background-clip: content-box;
 }
@@ -71,21 +71,9 @@ input, textarea, select {
   background: transparent;
 }
 
-.dark ::-webkit-scrollbar-thumb {
-  background: #4b5563;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  background: #6b7280;
-}
-
 /* Native selection color — slightly stronger so it stands out over match highlights */
 ::selection {
-  background-color: rgba(100, 100, 100, 0.35);
-}
-
-.dark ::selection {
-  background-color: rgba(180, 180, 180, 0.4);
+  background-color: var(--te-editor-selection);
 }
 
 /* Browser native ::selection in CM6 editor.
@@ -94,11 +82,7 @@ input, textarea, select {
    We override it with a MORE specific selector so native selection
    remains visible alongside drawSelection's decorative layer. */
 .cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
-  background-color: rgba(100, 100, 100, 0.35) !important;
-}
-
-.dark .cm-editor.cm-focused > .cm-scroller > .cm-content ::selection {
-  background-color: rgba(180, 180, 180, 0.4) !important;
+  background-color: var(--te-editor-selection) !important;
 }
 
 /* Force line-wrapping white-space in case CM6 default theme doesn't apply */
@@ -123,12 +107,8 @@ input[type="range"] {
   appearance: none;
   height: 4px;
   border-radius: 2px;
-  background: #e5e7eb;
+  background: var(--te-border);
   outline: none;
-}
-
-.dark input[type="range"] {
-  background: #374151;
 }
 
 input[type="range"]::-webkit-slider-thumb {
@@ -137,14 +117,10 @@ input[type="range"]::-webkit-slider-thumb {
   width: 16px;
   height: 16px;
   border-radius: 50%;
-  background: #3b82f6;
+  background: var(--te-primary);
   cursor: pointer;
-  border: 2px solid white;
+  border: 2px solid var(--te-bg-primary);
   box-shadow: 0 1px 3px rgba(0,0,0,0.15);
-}
-
-.dark input[type="range"]::-webkit-slider-thumb {
-  border-color: #1f2937;
 }
 
 /* CodeMirror 6 fixes */
@@ -163,11 +139,7 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* Subtle divider between line numbers and editor content */
 .cm-gutters {
-  box-shadow: inset -1px 0 0 rgba(0, 0, 0, 0.08) !important;
-}
-
-.dark .cm-gutters {
-  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.08) !important;
+  box-shadow: inset -1px 0 0 color-mix(in srgb, var(--te-border) 50%, transparent) !important;
 }
 
 /* INI file header styling */
@@ -274,30 +246,22 @@ input[type="range"]::-webkit-slider-thumb {
    EditorView.theme() styles may be scoped in a way that doesn't
    always match, so we use direct CSS with !important. */
 .cm-editor .cm-selectionBackground {
-  background-color: rgba(128, 128, 128, 0.25) !important;
+  background-color: var(--te-editor-selection) !important;
   border-radius: 3px;
 }
 
 .cm-editor.cm-focused .cm-selectionBackground {
-  background-color: rgba(128, 128, 128, 0.35) !important;
-}
-
-.dark .cm-editor .cm-selectionBackground {
-  background-color: rgba(160, 160, 160, 0.3) !important;
-}
-
-.dark .cm-editor.cm-focused .cm-selectionBackground {
-  background-color: rgba(160, 160, 160, 0.45) !important;
+  background-color: var(--te-editor-selection-focused) !important;
 }
 
 /* ── Hover Tooltip ────────────────────────────────────────────── */
 .cm-hover-tooltip {
-  background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.1);
+  background: var(--te-bg-tertiary);
+  border: 1px solid color-mix(in srgb, var(--te-border) 50%, transparent);
   border-radius: 6px;
   padding: 6px 10px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  color: #24292f;
+  color: var(--te-text-primary);
   max-width: 400px;
   font-family: ui-sans-serif, system-ui, sans-serif;
   font-size: 12px;
@@ -305,41 +269,14 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.dark .cm-hover-tooltip {
-  background: #1e1e1e;
-  border-color: rgba(255,255,255,0.1);
-  color: #c9d1d9;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-}
-
 /* ── Bracket Pair Colorization ────────────────────────────────── */
 .cm-matchingBracket {
-  background-color: rgba(128, 128, 128, 0.25) !important;
+  background-color: color-mix(in srgb, var(--te-text-secondary) 25%, transparent) !important;
   border-radius: 2px;
 }
 
 .cm-nonmatchingBracket {
-  background-color: rgba(255, 80, 80, 0.25) !important;
-  border-radius: 2px;
-}
-
-/* ── Selection match highlight (other occurrences of selected word) ── */
-.cm-selectionMatch {
-  background-color: rgba(128, 128, 128, 0.15);
-  border-radius: 2px;
-}
-
-.cm-selectionMatch-main {
-  background-color: rgba(128, 128, 128, 0.28);
-  border-radius: 2px;
-}
-
-.dark .cm-selectionMatch {
-  background-color: rgba(160, 160, 160, 0.18);
-}
-
-.dark .cm-selectionMatch-main {
-  background-color: rgba(160, 160, 160, 0.32);
+  background-color: color-mix(in srgb, var(--te-error) 25%, transparent) !important;
   border-radius: 2px;
 }
 
@@ -356,12 +293,12 @@ input[type="range"]::-webkit-slider-thumb {
 
 /* ── Signature Help Tooltip ───────────────────────────────────── */
 .cm-signature-tooltip {
-  background: #ffffff;
-  border: 1px solid rgba(0,0,0,0.1);
+  background: var(--te-bg-tertiary);
+  border: 1px solid color-mix(in srgb, var(--te-border) 50%, transparent);
   border-radius: 6px;
   padding: 8px 12px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  color: #24292f;
+  color: var(--te-text-primary);
   max-width: 500px;
   font-family: ui-monospace, "JetBrains Mono", "Fira Code", monospace;
   font-size: 12px;
@@ -369,51 +306,27 @@ input[type="range"]::-webkit-slider-thumb {
   pointer-events: none;
 }
 
-.dark .cm-signature-tooltip {
-  background: #1e1e1e;
-  border-color: rgba(255,255,255,0.1);
-  color: #c9d1d9;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
-}
-
 .cm-signature-tooltip .sig-name {
   font-weight: 600;
-  color: #795e26;
+  color: var(--te-primary-text);
   margin-bottom: 2px;
 }
 
-.dark .cm-signature-tooltip .sig-name {
-  color: #dcdcaa;
-}
-
 .cm-signature-tooltip .sig-signature {
-  color: #333;
-}
-
-.dark .cm-signature-tooltip .sig-signature {
-  color: #d4d4d4;
+  color: var(--te-text-primary);
 }
 
 .cm-signature-tooltip .sig-param {
-  color: #001080;
-}
-
-.dark .cm-signature-tooltip .sig-param {
-  color: #9cdcfe;
+  color: var(--te-primary-text);
 }
 
 .cm-signature-tooltip .sig-doc {
   margin-top: 4px;
   padding-top: 4px;
-  border-top: 1px solid rgba(128,128,128,0.15);
-  color: #6e7681;
+  border-top: 1px solid color-mix(in srgb, var(--te-border) 50%, transparent);
+  color: var(--te-text-secondary);
   font-size: 11px;
   font-family: ui-sans-serif, system-ui, sans-serif;
-}
-
-.dark .cm-signature-tooltip .sig-doc {
-  color: #808080;
-  border-color: rgba(255,255,255,0.08);
 }
 
 /* ── Markdown Reader Prose Overrides ──────────────────────────── */
@@ -535,50 +448,50 @@ input[type="range"]::-webkit-slider-thumb {
 /* ── Override prose-invert white text in dark mode ───────────── */
 .dark .prose-invert,
 .dark .prose-invert :where(p, li, ul, ol, td, th, blockquote, dd, dl, figure, figcaption) {
-  color: #c0c8d4;
+  color: var(--te-text-primary);
 }
 .dark .prose-invert :where(h1, h2, h3, h4, h5, h6, strong, b) {
-  color: #d8e0ec;
+  color: var(--te-text-primary);
 }
 .dark .prose-invert :where(a) {
-  color: #7ec0ff;
+  color: var(--te-primary);
 }
 .dark .prose-invert :where(a):hover {
-  color: #a8d4ff;
+  color: var(--te-primary-text);
 }
 .dark .prose-invert :where(code):not(:where(pre *)) {
-  color: #e0e0e0;
-  background: rgba(255,255,255,0.1);
+  color: var(--te-text-primary);
+  background: color-mix(in srgb, var(--te-text-secondary) 10%, transparent);
 }
 .dark .prose-invert :where(pre) {
-  color: #e0e0e0;
-  background: rgba(255,255,255,0.08);
+  color: var(--te-text-primary);
+  background: color-mix(in srgb, var(--te-text-secondary) 8%, transparent);
 }
 .dark .prose-invert :where(hr) {
-  border-color: rgba(255,255,255,0.18);
+  border-color: color-mix(in srgb, var(--te-border) 50%, transparent);
 }
 .dark .prose-invert :where(thead) {
-  border-bottom-color: rgba(255,255,255,0.25);
+  border-bottom-color: color-mix(in srgb, var(--te-border) 50%, transparent);
 }
 .dark .prose-invert :where(tr):not(:last-child) {
-  border-bottom-color: rgba(255,255,255,0.12);
+  border-bottom-color: color-mix(in srgb, var(--te-border) 30%, transparent);
 }
 
 /* Reader prose dark mode colors */
 .dark .reader-prose :where(h1, h2, h3, h4, h5, h6, strong, b) {
-  color: #d8e0ec;
+  color: var(--te-text-primary);
 }
 .dark .reader-prose :where(a) {
-  color: #7ec0ff;
+  color: var(--te-primary);
 }
 .dark .reader-prose :where(a):hover {
-  color: #a8d4ff;
+  color: var(--te-primary-text);
 }
 .dark .reader-prose :where(code):not(:where(pre *)) {
-  color: #e0e0e0;
-  background: rgba(255,255,255,0.1);
+  color: var(--te-text-primary);
+  background: color-mix(in srgb, var(--te-text-secondary) 10%, transparent);
 }
 .dark .reader-prose :where(pre) {
-  background: rgba(255,255,255,0.08);
+  background: color-mix(in srgb, var(--te-text-secondary) 8%, transparent);
 }
 

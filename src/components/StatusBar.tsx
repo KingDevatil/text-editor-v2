@@ -78,7 +78,7 @@ function countWords(text: string): number {
 }
 
 const StatusBar: React.FC<StatusBarProps> = React.memo(({
-  activeTab, theme, onEncodingChange, onLanguageChange,
+  activeTab, onEncodingChange, onLanguageChange,
   wordWrap, onToggleWordWrap, showWhitespace, onToggleShowWhitespace,
   minimapVisible, onToggleMinimap,
 }) => {
@@ -131,8 +131,6 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
     };
   }, [activeTab?.id]);
 
-  const isDark = theme === 'vs-dark';
-
   const [encOpen, setEncOpen] = useState(false);
   const [langOpen, setLangOpen] = useState(false);
   const encRef = useRef<HTMLDivElement>(null);
@@ -141,20 +139,10 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
   useClickOutside(encRef, () => setEncOpen(false));
   useClickOutside(langRef, () => setLangOpen(false));
 
-  const itemClass = (isActive: boolean) =>
-    `block w-full text-left px-3 py-1.5 text-xs rounded transition-colors ${
-      isActive
-        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-600 dark:text-blue-300 font-medium'
-        : 'text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-700'
-    }`;
-
   return (
     <div
-      className={`flex items-center justify-between px-3 h-7 text-xs select-none relative border-t ${
-        isDark
-          ? 'bg-gray-900 border-gray-700 text-gray-300'
-          : 'bg-gray-50 border-gray-200 text-gray-600'
-      }`}
+      className="flex items-center justify-between px-3 h-7 text-xs select-none relative border-t"
+      style={{ backgroundColor: 'var(--te-bg-secondary)', borderTopColor: 'var(--te-border)', color: 'var(--te-text-secondary)' }}
     >
       <div className="flex items-center gap-3">
         {activeTab && (
@@ -162,9 +150,7 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
             <div className="relative" ref={langRef}>
               <button
                 onClick={() => { setLangOpen(!langOpen); setEncOpen(false); }}
-                className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
-                  isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'
-                }`}
+                className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer hover:opacity-80"
                 title="点击切换语言模式"
               >
                 <FileType size={12} />
@@ -173,15 +159,18 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
               </button>
               {langOpen && (
                 <div
-                  className={`absolute bottom-full left-0 mb-1 py-1.5 rounded-lg shadow-xl border z-50 min-w-[150px] max-h-64 overflow-auto ${
-                    isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-                  }`}
+                  className="absolute bottom-full left-0 mb-1 py-1.5 rounded-lg shadow-xl border z-50 min-w-[150px] max-h-64 overflow-auto"
+                  style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}
                 >
                   {LANGUAGES.map((lang) => (
                     <button
                       key={lang.id}
                       onClick={() => { onLanguageChange?.(lang.id); setLangOpen(false); }}
-                      className={itemClass(activeTab.language === lang.id)}
+                      className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors hover:opacity-80 ${activeTab.language === lang.id ? 'font-medium' : ''}`}
+                      style={activeTab.language === lang.id
+                        ? { backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)', color: 'var(--te-primary)' }
+                        : { color: 'var(--te-text-primary)' }
+                      }
                     >
                       {lang.label}
                     </button>
@@ -189,11 +178,13 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
                 </div>
               )}
             </div>
-            <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-              activeTab.isDirty
-                ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-300'
-                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-            }`}>
+            <span
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium"
+              style={{
+                backgroundColor: activeTab.isDirty ? 'var(--te-warning)' : 'var(--te-success)',
+                color: 'var(--te-text-primary)',
+              }}
+            >
               {activeTab.isDirty ? '已修改' : '已保存'}
             </span>
           </>
@@ -211,33 +202,33 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
           <>
             <button
               onClick={onToggleWordWrap}
-              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
-                wordWrap
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-              }`}
+              className="px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium hover:opacity-80"
+              style={wordWrap
+                ? { backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)', color: 'var(--te-primary)' }
+                : { color: 'var(--te-text-secondary)' }
+              }
               title="自动换行"
             >
               换行
             </button>
             <button
               onClick={onToggleShowWhitespace}
-              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
-                showWhitespace
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-              }`}
+              className="px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium hover:opacity-80"
+              style={showWhitespace
+                ? { backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)', color: 'var(--te-primary)' }
+                : { color: 'var(--te-text-secondary)' }
+              }
               title="显示空白字符"
             >
               空白
             </button>
             <button
               onClick={onToggleMinimap}
-              className={`px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium ${
-                minimapVisible
-                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                  : isDark ? 'hover:bg-gray-800 text-gray-400' : 'hover:bg-gray-200 text-gray-500'
-              }`}
+              className="px-1.5 py-0.5 rounded transition-colors cursor-pointer text-[10px] font-medium hover:opacity-80"
+              style={minimapVisible
+                ? { backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)', color: 'var(--te-primary)' }
+                : { color: 'var(--te-text-secondary)' }
+              }
               title="代码缩略图"
             >
               缩略图
@@ -247,9 +238,7 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
         <div className="relative" ref={encRef}>
           <button
             onClick={() => { setEncOpen(!encOpen); setLangOpen(false); }}
-            className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer ${
-              isDark ? 'hover:bg-gray-800' : 'hover:bg-gray-200'
-            }`}
+            className="flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors cursor-pointer hover:opacity-80"
             title="点击切换编码"
           >
             <span className="font-medium">{activeTab?.encoding || 'UTF-8'}</span>
@@ -257,15 +246,18 @@ const StatusBar: React.FC<StatusBarProps> = React.memo(({
           </button>
           {encOpen && (
             <div
-              className={`absolute bottom-full right-0 mb-1 py-1.5 rounded-lg shadow-xl border z-50 min-w-[150px] ${
-                isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
-              }`}
+              className="absolute bottom-full right-0 mb-1 py-1.5 rounded-lg shadow-xl border z-50 min-w-[150px]"
+              style={{ backgroundColor: 'var(--te-bg-tertiary)', borderColor: 'var(--te-border)' }}
             >
               {ENCODINGS.map((enc) => (
                 <button
                   key={enc}
                   onClick={() => { onEncodingChange?.(enc); setEncOpen(false); }}
-                  className={itemClass(activeTab?.encoding === enc)}
+                  className={`block w-full text-left px-3 py-1.5 text-xs rounded transition-colors hover:opacity-80 ${activeTab?.encoding === enc ? 'font-medium' : ''}`}
+                  style={activeTab?.encoding === enc
+                    ? { backgroundColor: 'color-mix(in srgb, var(--te-primary) 15%, transparent)', color: 'var(--te-primary)' }
+                    : { color: 'var(--te-text-primary)' }
+                  }
                 >
                   {enc}
                 </button>

@@ -50,6 +50,34 @@ export type Language =
   | 'ini'
   | 'log';
 
+export type ThemeMode = 'light' | 'dark' | 'custom';
+
+export interface ThemeColors {
+  bgPrimary: string;
+  bgSecondary: string;
+  bgTertiary: string;
+  textPrimary: string;
+  textSecondary: string;
+  border: string;
+  primary: string;
+  primaryText: string;
+  editorGutterBg: string;
+  editorGutterText: string;
+  editorCursor: string;
+  editorSelection: string;
+  editorActiveLine: string;
+  editorMatchHighlight: string;
+  editorSelectionMatch: string;
+  tabActiveBg: string;
+  success: string;
+  warning: string;
+  error: string;
+  scrollbarThumb: string;
+  scrollbarThumbHover: string;
+}
+
+export type PartialThemeColors = Partial<ThemeColors>;
+
 export const EXT_TO_LANGUAGE: Record<string, Language> = {
   txt: 'plaintext',
   js: 'javascript',

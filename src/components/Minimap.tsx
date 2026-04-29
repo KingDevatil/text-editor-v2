@@ -7,6 +7,9 @@ interface MinimapProps {
   theme: EditorTheme;
 }
 
+const getVar = (name: string) =>
+  getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+
 const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -72,8 +75,7 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
       ctx.clearRect(0, 0, W, H);
 
-      const isDark = theme === 'vs-dark';
-      ctx.fillStyle = isDark ? '#1e1e1e' : '#f3f3f3';
+      ctx.fillStyle = getVar('--te-bg-primary');
       ctx.fillRect(0, 0, W, H);
 
       const lines = doc.lines;
@@ -87,7 +89,7 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       }
 
       // 绘制代码缩略：每行/每块用一条灰线表示，长度和透明度随字符数变化
-      ctx.fillStyle = isDark ? '#8b949e' : '#57606a';
+      ctx.fillStyle = getVar('--te-text-secondary');
       for (let i = 1; i <= lines; i += step) {
         let maxLen = 0;
         for (let j = 0; j < step && i + j <= lines; j++) {
@@ -109,9 +111,12 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       const vpY = (fromLine - 1) / step * lineH;
       const vpH = Math.max((toLine - fromLine + 1) / step * lineH, 3);
 
-      ctx.fillStyle = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)';
+      ctx.globalAlpha = 0.08;
+      ctx.fillStyle = getVar('--te-text-primary');
       ctx.fillRect(0, vpY, W, vpH);
-      ctx.strokeStyle = isDark ? 'rgba(255,255,255,0.25)' : 'rgba(0,0,0,0.15)';
+      ctx.globalAlpha = 1;
+
+      ctx.strokeStyle = getVar('--te-border');
       ctx.lineWidth = 1;
       ctx.strokeRect(0.5, vpY + 0.5, W - 1, vpH - 1);
 
@@ -193,10 +198,7 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       ref={containerRef}
       className="w-[120px] h-full flex-shrink-0 relative cursor-pointer select-none border-l"
       style={{
-        borderColor:
-          theme === 'vs-dark'
-            ? 'rgba(255,255,255,0.06)'
-            : 'rgba(0,0,0,0.06)',
+        borderColor: getVar('--te-border'),
       }}
       onMouseDown={handleMouseDown}
       onWheel={handleWheel}

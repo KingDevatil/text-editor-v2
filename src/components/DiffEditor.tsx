@@ -2,20 +2,26 @@ import React, { useRef, useEffect, useState, useCallback } from 'react';
 import { MergeView } from '@codemirror/merge';
 import { history, historyKeymap } from '@codemirror/commands';
 import { lineNumbers, keymap, EditorView } from '@codemirror/view';
-import { getThemeExtension, syntaxHighlightExtension, type EditorTheme } from '../utils/themes';
+import { buildDynamicTheme, syntaxHighlightExtension } from '../utils/themes';
+import { resolveThemeColors } from '../utils/themeResolver';
+import type { ThemeMode } from '../types';
 import { useEditorStore } from '../hooks/useEditorStore';
 import { X } from 'lucide-react';
 
 interface DiffEditorProps {
   leftContent: string;
   rightContent: string;
-  theme: EditorTheme;
+  theme: ThemeMode;
 }
 
 const DiffEditor: React.FC<DiffEditorProps> = ({ leftContent, rightContent, theme }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const mergeViewRef = useRef<MergeView | null>(null);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+
+  const lightCustomColors = useEditorStore((s) => s.lightCustomColors);
+  const darkCustomColors = useEditorStore((s) => s.darkCustomColors);
+  const customColors = useEditorStore((s) => s.customColors);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -27,12 +33,14 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ leftContent, rightContent, them
       mergeViewRef.current = null;
     }
 
+    const colors = resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors);
+
     const baseExtensions = [
       history(),
       keymap.of(historyKeymap),
       lineNumbers(),
       syntaxHighlightExtension,
-      getThemeExtension(theme),
+      buildDynamicTheme(colors),
       EditorView.editable.of(false),
     ];
 
@@ -57,7 +65,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ leftContent, rightContent, them
       mergeView.destroy();
       mergeViewRef.current = null;
     };
-  }, [leftContent, rightContent, theme]);
+  }, [leftContent, rightContent, theme, lightCustomColors, darkCustomColors, customColors]);
 
   const handleContextMenu = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

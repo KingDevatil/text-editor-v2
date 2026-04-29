@@ -235,17 +235,17 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
   if (!visible) return null;
 
   const inputClass =
-    'px-3 py-1.5 text-sm rounded-lg border bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 focus:border-blue-500 transition-all';
+    'px-3 py-1.5 text-sm rounded-lg border border-[var(--te-border)] bg-[var(--te-bg-tertiary)] text-[var(--te-text-primary)] placeholder-[var(--te-text-secondary)] focus:outline-none focus:ring-2 focus:ring-[color-mix(in_srgb,var(--te-primary)_50%,transparent)] focus:border-[var(--te-primary)] transition-all';
 
   const iconBtnClass =
-    'p-1.5 rounded-lg hover:bg-gray-200/80 dark:hover:bg-gray-700/80 text-gray-500 dark:text-gray-400 transition-colors active:scale-95';
+    'p-1.5 rounded-lg hover:bg-[color-mix(in_srgb,var(--te-bg-secondary)_80%,transparent)] text-[var(--te-text-secondary)] transition-colors active:scale-95';
 
   const disabledBtnClass = 'opacity-40 cursor-not-allowed active:scale-100';
 
   const canAct = !!findText && !!activeTabId;
 
   return (
-    <div className="flex flex-col gap-2.5 px-4 py-3 border-b border-gray-200 dark:border-gray-700/80 bg-gray-50 dark:bg-gray-900 shadow-sm">
+    <div className="flex flex-col gap-2.5 px-4 py-3 border-b border-[var(--te-border)] bg-[var(--te-bg-secondary)] shadow-sm">
       <div className="flex items-center gap-2">
         <div className="flex-1 flex items-center gap-2">
           <div className="relative flex-1">
@@ -256,10 +256,10 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
               value={findText}
               onChange={(e) => setFindText(e.target.value)}
               onKeyDown={handleKeyDown}
-              className={`${inputClass} w-full border-gray-300 dark:border-gray-600`}
+              className={`${inputClass} w-full`}
             />
             {matchCount !== 0 && (
-              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-gray-400 dark:text-gray-500 select-none">
+              <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-xs text-[var(--te-text-secondary)] select-none">
                 {currentMatch}/{Math.abs(matchCount)}{matchCount < 0 ? '+' : ''}
               </span>
             )}
@@ -272,7 +272,7 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
                 value={replaceText}
                 onChange={(e) => setReplaceText(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className={`${inputClass} w-full border-gray-300 dark:border-gray-600`}
+                className={`${inputClass} w-full`}
               />
             </div>
           )}
@@ -326,17 +326,17 @@ const FindReplace: React.FC<FindReplaceProps> = ({ visible, onClose }) => {
           </button>
         </div>
       </div>
-      <div className="flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
+      <div className="flex items-center gap-3 text-xs text-[var(--te-text-secondary)]">
         <label className="flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
             checked={caseSensitive}
             onChange={(e) => setCaseSensitive(e.target.checked)}
-            className="rounded border-gray-300 dark:border-gray-600 text-blue-600 focus:ring-blue-500"
+            className="rounded border-[var(--te-border)] text-[var(--te-primary)] focus:ring-[var(--te-primary)]"
           />
           <span>区分大小写</span>
         </label>
-        <span className="text-gray-400 dark:text-gray-500">Enter: 下一个, Shift+Enter: 上一个, Esc: 关闭</span>
+        <span className="text-[var(--te-text-secondary)]">Enter: 下一个, Shift+Enter: 上一个, Esc: 关闭</span>
       </div>
     </div>
   );

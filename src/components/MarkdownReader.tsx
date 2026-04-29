@@ -8,14 +8,17 @@ import {
   Sun,
   ChevronUp,
   Maximize2,
+  Copy,
+  Clipboard,
 } from 'lucide-react';
+import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 import { getEditorContent } from '../hooks/useEditorStatePool';
-import type { EditorTheme } from '../utils/themes';
+import type { ThemeMode } from '../types';
 import { generateHeadingSlugs, slugify } from '../utils/slugify';
 
 interface MarkdownReaderProps {
   tabId: string;
-  theme: EditorTheme;
+  theme: ThemeMode;
   onExit: () => void;
   onToggleTheme: () => void;
 }
@@ -32,6 +35,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
   const [readerFontSize, setReaderFontSize] = useState(16);
   const [tocVisible, setTocVisible] = useState(false);
   const [showScrollTop, setShowScrollTop] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const rafRef = useRef<number | null>(null);
   const lastContentRef = useRef('');
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -113,10 +117,10 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
     return () => window.removeEventListener('keydown', handleKey);
   }, [onExit]);
 
-  const isDark = theme === 'vs-dark';
+  const isDark = theme === 'dark';
 
-  const bgColor = isDark ? '#0d1117' : '#ffffff';
-  const textColor = isDark ? '#a0aab4' : '#24292f';
+  const bgColor = 'var(--te-bg-primary)';
+  const textColor = 'var(--te-text-primary)';
   const proseInvert = isDark ? 'prose-invert' : '';
 
   return (
@@ -125,13 +129,14 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
       style={{ backgroundColor: bgColor }}
     >
       {/* Floating top bar */}
-      <div className="flex items-center justify-between px-4 h-12 shrink-0 border-b border-gray-200/10 dark:border-gray-700/30"
-        style={{ backgroundColor: bgColor }}
+      <div className="flex items-center justify-between px-4 h-12 shrink-0 border-b"
+        style={{ backgroundColor: bgColor, borderColor: 'color-mix(in srgb, var(--te-border) 30%, transparent)' }}
       >
         <div className="flex items-center gap-1">
           <button
             onClick={onExit}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10 text-gray-600 dark:text-gray-300"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]"
+            style={{ color: 'var(--te-text-secondary)' }}
             title="退出阅读模式 (ESC)"
           >
             <X size={16} />
@@ -143,7 +148,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
           {/* TOC toggle */}
           <button
             onClick={() => setTocVisible(!tocVisible)}
-            className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10 ${tocVisible ? 'bg-black/5 dark:bg-white/10' : ''}`}
+            className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)] ${tocVisible ? 'bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]' : ''}`}
             title="目录"
             style={{ color: textColor }}
           >
@@ -154,7 +159,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
           <div className="flex items-center gap-0.5">
             <button
               onClick={() => setReaderFontSize((s) => Math.max(12, s - 1))}
-              className="px-2 py-1.5 rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
+              className="px-2 py-1.5 rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]"
               title="减小字号"
               style={{ color: textColor }}
             >
@@ -165,7 +170,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
             </span>
             <button
               onClick={() => setReaderFontSize((s) => Math.min(24, s + 1))}
-              className="px-2 py-1.5 rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
+              className="px-2 py-1.5 rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]"
               title="增大字号"
               style={{ color: textColor }}
             >
@@ -176,19 +181,19 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
           {/* Theme */}
           <button
             onClick={onToggleTheme}
-            className="px-2 py-1.5 rounded-lg transition-all hover:bg-black/5 dark:hover:bg-white/10"
+            className="px-2 py-1.5 rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]"
             title="切换主题"
             style={{ color: textColor }}
           >
-            {isDark ? <Sun size={16} /> : <Moon size={16} />}
+            {isDark ? <Sun size={16} /> : theme === 'custom' ? <span className="text-xs">Custom</span> : <Moon size={16} />}
           </button>
         </div>
       </div>
 
       {/* TOC sidebar overlay */}
       {tocVisible && toc.length > 0 && (
-        <div className="absolute left-0 top-12 bottom-0 w-64 z-40 border-r border-gray-200/10 dark:border-gray-700/30 overflow-auto"
-          style={{ backgroundColor: bgColor }}
+        <div className="absolute left-0 top-12 bottom-0 w-64 z-40 border-r overflow-auto"
+          style={{ backgroundColor: bgColor, borderColor: 'color-mix(in srgb, var(--te-border) 30%, transparent)' }}
         >
           <div className="p-4">
             <h3 className="text-sm font-semibold mb-3" style={{ color: textColor }}>目录</h3>
@@ -197,7 +202,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
                 <button
                   key={item.id}
                   onClick={() => scrollToHeading(item.id)}
-                  className="block w-full text-left text-sm rounded-md px-2 py-1 transition-colors hover:bg-black/5 dark:hover:bg-white/10 truncate"
+                  className="block w-full text-left text-sm rounded-md px-2 py-1 transition-colors hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)] truncate"
                   style={{
                     color: textColor,
                     paddingLeft: `${(item.level - 1) * 12 + 8}px`,
@@ -219,6 +224,35 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
         className="flex-1 overflow-auto"
         onScroll={handleScroll}
         onClick={handleContentClick}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          const selection = window.getSelection()?.toString() || '';
+          const items: ContextMenuItem[] = [
+            {
+              id: 'copy',
+              label: '复制',
+              icon: <Copy size={14} />,
+              disabled: !selection,
+              action: () => navigator.clipboard.writeText(selection),
+            },
+            {
+              id: 'select-all',
+              label: '全选',
+              icon: <Clipboard size={14} />,
+              action: () => {
+                const range = document.createRange();
+                const proseEl = scrollRef.current?.querySelector('.reader-prose');
+                if (proseEl) {
+                  range.selectNodeContents(proseEl);
+                  const sel = window.getSelection();
+                  sel?.removeAllRanges();
+                  sel?.addRange(range);
+                }
+              },
+            },
+          ];
+          setContextMenu({ x: e.clientX, y: e.clientY, items });
+        }}
       >
         <div className="mx-auto px-6 py-10 max-w-3xl">
           <div
@@ -239,14 +273,23 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
           onClick={scrollToTop}
           className="absolute bottom-6 right-6 p-2 rounded-full shadow-lg transition-all hover:scale-110 z-40"
           style={{
-            backgroundColor: isDark ? '#30363d' : '#ffffff',
-            color: isDark ? '#a0aab4' : '#24292f',
-            border: `1px solid ${isDark ? 'rgba(255,255,255,0.1)' : 'rgba(0,0,0,0.1)'}`,
+            backgroundColor: 'var(--te-bg-tertiary)',
+            color: 'var(--te-text-primary)',
+            border: '1px solid color-mix(in srgb, var(--te-border) 10%, transparent)',
           }}
           title="回到顶部"
         >
           <ChevronUp size={20} />
         </button>
+      )}
+
+      {contextMenu && (
+        <ContextMenu
+          x={contextMenu.x}
+          y={contextMenu.y}
+          items={contextMenu.items}
+          onClose={() => setContextMenu(null)}
+        />
       )}
     </div>
   );

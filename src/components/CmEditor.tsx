@@ -9,7 +9,9 @@ import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
 import { foldGutter, foldKeymap, bracketMatching, indentOnInput } from '@codemirror/language';
 import { unicodeHighlight as unicodeHighlightExt } from '../utils/unicodeHighlight';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
-import { getThemeExtension, syntaxHighlightExtension, type EditorTheme } from '../utils/themes';
+import { buildDynamicTheme, syntaxHighlightExtension } from '../utils/themes';
+import { resolveThemeColors } from '../utils/themeResolver';
+import type { ThemeMode } from '../types';
 import { formatDocument } from '../utils/cmCommands';
 import { getLinterExtension } from '../utils/lint';
 import { getAutocompleteExtension } from '../utils/autocomplete';
@@ -19,7 +21,7 @@ import { bracketColorization } from '../utils/bracketColorization';
 import { signatureHelp } from '../utils/signatureHelp';
 import { perf } from '../utils/perf';
 import { isTauri } from '@tauri-apps/api/core';
-import type { Language } from '../types';
+import type { Language, ThemeColors } from '../types';
 import {
   getEditorState,
   setEditorState,
@@ -33,7 +35,7 @@ import { goToDefinition } from '../utils/cmCommands';
 interface CmEditorProps {
   tabId: string;
   language: Language;
-  theme: EditorTheme;
+  theme: ThemeMode;
   onChange: () => void;
   fontSize: number;
   readOnly?: boolean;
@@ -106,7 +108,7 @@ async function readClipboard(): Promise<string> {
 
 function buildBaseExtensions(
   lang: Language,
-  theme: EditorTheme,
+  colors: ThemeColors,
   fontSize: number,
   readOnly: boolean,
   largeFileOptimize: boolean,
@@ -139,7 +141,7 @@ function buildBaseExtensions(
     highlightSelectionMatches(),
     syntaxHighlightExtension,
     languageCompartment.of(getLanguageExtensionsSync(lang)),
-    themeCompartment.of(getThemeExtension(theme)),
+    themeCompartment.of(buildDynamicTheme(colors)),
     fontSizeCompartment.of(
       EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
     ),
@@ -194,6 +196,11 @@ const CmEditor: React.FC<CmEditorProps> = ({
 
   const canFormat = FORMATTABLE_LANGUAGES.has(language);
 
+  // Subscribe to custom colors from store for dynamic theme resolution
+  const lightCustomColors = useEditorStore((s) => s.lightCustomColors);
+  const darkCustomColors = useEditorStore((s) => s.darkCustomColors);
+  const customColors = useEditorStore((s) => s.customColors);
+
   // Keep callback ref up to date
   useEffect(() => {
     onChangeRef.current = onChange;
@@ -221,7 +228,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, theme, fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId, enableUnicodeHighlight),
+          ...buildBaseExtensions(language, resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors), fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId, enableUnicodeHighlight),
           EditorView.updateListener.of((update) => {
             // Always save state to pool so that effects (language/theme changes)
             // are persisted, not just doc changes.
@@ -347,11 +354,12 @@ const CmEditor: React.FC<CmEditorProps> = ({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    const colors = resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors);
     view.dispatch({
-      effects: themeCompartment.reconfigure(getThemeExtension(theme)),
+      effects: themeCompartment.reconfigure(buildDynamicTheme(colors)),
     });
     setEditorState(tabId, view.state);
-  }, [theme, tabId]);
+  }, [theme, lightCustomColors, darkCustomColors, customColors, tabId]);
 
   // Dynamic reconfiguration: font size
   useEffect(() => {
