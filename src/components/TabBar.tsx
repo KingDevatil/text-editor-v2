@@ -14,7 +14,7 @@ interface TabBarProps {
   onNewFile?: () => void;
   onNewFileInGroup?: (group: 1 | 2) => void;
   onMoveTabToGroup?: (tabId: string, group: 1 | 2) => void;
-  onReorderTab?: (tabId: string, targetIndex: number) => void;
+  onReorderTab?: (tabId: string, group: 1 | 2, targetGroupIndex: number) => void;
   onCloseTabs?: (tabIds: string[]) => void;
   onRenameTab?: (tabId: string, newTitle: string) => void;
 }
@@ -238,19 +238,7 @@ const TabBar: React.FC<TabBarProps> = React.memo(({
         const currentIndex = groupTabsOrdered.findIndex((t) => t.id === ds.tabId);
         if (info.index === currentIndex || info.index === currentIndex + 1) return;
 
-        // Compute global target index correctly regardless of gaps between groups
-        const remainingTabs = tabs.filter((t) => t.id !== ds.tabId);
-        let globalTargetIndex: number;
-        if (info.index >= groupTabsOrdered.length) {
-          // Move to the end of the group
-          const lastGroupTab = groupTabsOrdered[groupTabsOrdered.length - 1];
-          const lastIndex = remainingTabs.findIndex((t) => t.id === lastGroupTab.id);
-          globalTargetIndex = lastIndex + 1;
-        } else {
-          const targetTab = groupTabsOrdered[info.index];
-          globalTargetIndex = remainingTabs.findIndex((t) => t.id === targetTab.id);
-        }
-        onReorderTab?.(ds.tabId, globalTargetIndex);
+        onReorderTab?.(ds.tabId, ds.group, info.index);
       } else {
         onMoveTabToGroup?.(ds.tabId, info.group);
       }

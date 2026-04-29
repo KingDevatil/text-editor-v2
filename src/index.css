@@ -149,6 +149,10 @@ input[type="range"]::-webkit-slider-thumb {
   height: 100%;
 }
 
+.cm-content {
+  font-size: var(--cm-font-size, 14px) !important;
+}
+
 .cm-editor.cm-focused {
   outline: none !important;
 }

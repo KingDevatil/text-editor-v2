@@ -90,7 +90,7 @@ interface EditorActions {
   setTabEncoding: (tabId: string, encoding: Encoding) => void;
   setTabLanguage: (tabId: string, language: string) => void;
   moveTabToGroup: (tabId: string, group: 1 | 2) => void;
-  reorderTab: (tabId: string, targetIndex: number) => void;
+  reorderTab: (tabId: string, group: 1 | 2, targetGroupIndex: number) => void;
   setSplitMode: (mode: boolean) => void;
   setActiveTabId: (id: string | null) => void;
   setActiveGroup1TabId: (id: string | null) => void;
@@ -315,13 +315,44 @@ const useEditorStore = create<EditorState & EditorActions>((set, _get) => ({
     }));
   },
 
-  reorderTab: (tabId, targetIndex) => {
+  reorderTab: (tabId, group, targetGroupIndex) => {
     set((state) => {
-      const currentIndex = state.tabs.findIndex((t) => t.id === tabId);
-      if (currentIndex === -1 || currentIndex === targetIndex) return state;
-      const newTabs = [...state.tabs];
-      const [moved] = newTabs.splice(currentIndex, 1);
-      newTabs.splice(targetIndex, 0, moved);
+      const currentGlobalIndex = state.tabs.findIndex((t) => t.id === tabId);
+      if (currentGlobalIndex === -1) return state;
+
+      const groupTabs =
+        group === 1
+          ? state.tabs.filter((t) => t.group === 1 || !t.group)
+          : state.tabs.filter((t) => t.group === 2);
+      const currentGroupIndex = groupTabs.findIndex((t) => t.id === tabId);
+
+      // No-op when dropped on current position or immediate right edge
+      if (targetGroupIndex === currentGroupIndex || targetGroupIndex === currentGroupIndex + 1) {
+        return state;
+      }
+
+      const movedTab = state.tabs[currentGlobalIndex];
+      const newTabs = state.tabs.filter((t) => t.id !== tabId);
+
+      // Walk newTabs to find the global index that corresponds to
+      // targetGroupIndex within this group.
+      let insertGlobalIndex = -1;
+      let groupCount = 0;
+      for (let i = 0; i < newTabs.length; i++) {
+        const g = newTabs[i].group || 1;
+        if (g === group) {
+          if (groupCount === targetGroupIndex) {
+            insertGlobalIndex = i;
+            break;
+          }
+          groupCount++;
+        }
+      }
+      if (insertGlobalIndex === -1) {
+        insertGlobalIndex = newTabs.length;
+      }
+
+      newTabs.splice(insertGlobalIndex, 0, movedTab);
       return { tabs: newTabs };
     });
   },

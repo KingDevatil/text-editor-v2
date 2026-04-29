@@ -225,15 +225,13 @@ const CmEditor: React.FC<CmEditorProps> = ({
       effects: wordWrapCompartment.reconfigure(wordWrap ? EditorView.lineWrapping : []),
     });
 
-    // Ensure fontSize is applied immediately on DOM ( compartment reconfigure may lag )
-    const cmContent = view.dom.querySelector('.cm-content') as HTMLElement | null;
-    if (cmContent) {
-      cmContent.style.fontSize = `${fontSize}px`;
-    }
+    // Apply fontSize via CSS variable for instant visual feedback
+    view.dom.style.setProperty('--cm-font-size', `${fontSize}px`);
 
     // Workaround: if CM6 default double-click word selection fails to show
     // visual highlight (but selection is logically set), force a re-draw.
     let dblClickCleanup: (() => void) | undefined;
+    const cmContent = view.dom.querySelector('.cm-content') as HTMLElement | null;
     if (cmContent) {
       const handleDblClick = (e: MouseEvent) => {
         const v = viewRef.current;
@@ -330,11 +328,8 @@ const CmEditor: React.FC<CmEditorProps> = ({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
-    // Apply immediately on DOM for instant visual feedback
-    const cmContent = view.dom.querySelector('.cm-content') as HTMLElement | null;
-    if (cmContent) {
-      cmContent.style.fontSize = `${fontSize}px`;
-    }
+    // Apply via CSS variable for instant visual feedback (highest priority)
+    view.dom.style.setProperty('--cm-font-size', `${fontSize}px`);
     // Also update compartment so the state stays consistent
     view.dispatch({
       effects: fontSizeCompartment.reconfigure(
