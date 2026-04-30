@@ -68,11 +68,9 @@ npm run tauri-dev
 
 ### 构建生产版本
 
-```bash
-# Windows
-npm run tauri-build
+#### Windows
 
-# macOS（需在 macOS 系统或 CI 上执行）
+```bash
 npm run tauri-build
 ```
 
@@ -81,7 +79,91 @@ npm run tauri-build
 | 平台 | 路径 |
 |------|------|
 | Windows | `src-tauri/target/release/bundle/nsis/Text Editor_1.0.0_x64-setup.exe` |
-| macOS | `src-tauri/target/release/bundle/dmg/Text Editor_1.0.0_x64.dmg` |
+
+---
+
+#### macOS（在 Mac 上打包）
+
+> ⚠️ **注意**：由于 Tauri 的限制，macOS 应用必须在 **macOS 系统** 上构建，无法通过 Windows/Linux 交叉编译。
+
+##### 1. 环境准备
+
+确保你的 Mac 已安装以下工具：
+
+- **Node.js** 18+（推荐通过 [Homebrew](https://brew.sh/) 安装：`brew install node`）
+- **Rust**（通过 [rustup](https://rustup.rs/) 安装）
+- **Xcode Command Line Tools**（运行 `xcode-select --install` 安装）
+
+验证安装：
+
+```bash
+node -v    # v18.x.x 或更高
+npm -v     # 9.x.x 或更高
+cargo -v   # 确认 Rust 已安装
+```
+
+##### 2. 克隆项目并安装依赖
+
+```bash
+git clone <仓库地址>
+cd text-editor-v2
+npm install
+```
+
+##### 3. 执行打包
+
+```bash
+npm run tauri-build
+```
+
+该命令会自动完成以下步骤：
+1. 编译前端（`tsc -b && vite build`）
+2. 编译 Rust 后端（Release 模式）
+3. 生成 `.app` 应用包
+4. 打包为 `.dmg` 镜像文件
+
+##### 4. 获取安装包
+
+构建完成后，产物位于：
+
+| 类型 | 路径 |
+|------|------|
+| DMG 安装包 | `src-tauri/target/release/bundle/dmg/Text Editor_1.0.0_x64.dmg` |
+| APP 应用包 | `src-tauri/target/release/bundle/macos/Text Editor.app` |
+
+##### 5. 常见问题
+
+**Q: 构建时提示 `xcrun: error: invalid active developer path`？**
+
+A: Xcode Command Line Tools 未正确安装，执行：
+```bash
+xcode-select --install
+# 或重新指定路径
+sudo xcode-select --reset
+```
+
+**Q: 打开应用时提示「无法验证开发者」？**
+
+A: 本地构建未签名的应用会被 Gatekeeper 拦截。可通过以下方式解决：
+- **方式一**：右键点击 `.app` → 选择「打开」→ 点击「仍要打开」
+- **方式二**：系统设置 → 隐私与安全性 → 安全性 → 点击「仍要打开」
+- **方式三**：终端执行 `xattr -rd com.apple.quarantine "src-tauri/target/release/bundle/macos/Text Editor.app"`
+
+**Q: 如何进行签名和公证（Notarization）？**
+
+A: 若需分发给其他 Mac 用户，建议配置 Apple Developer 签名：
+
+1. 在 [Apple Developer](https://developer.apple.com/) 申请 Developer ID 证书
+2. 在 `src-tauri/tauri.conf.json` 的 `bundle.macOS` 中配置：
+   ```json
+   "macOS": {
+     "signingIdentity": "Developer ID Application: Your Name (TEAM_ID)",
+     "notarize": true
+   }
+   ```
+3. 或在 CI 中通过环境变量配置（见 `.github/workflows/release.yml`）
+
+更多详情参考 [Tauri 官方签名文档](https://tauri.app/distribute/sign/macOS/)。
 
 ---
 

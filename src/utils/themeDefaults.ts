@@ -41,9 +41,9 @@ export const defaultDarkColors: ThemeColors = {
   editorMatchHighlight: '#515c6a',
   editorSelectionMatch: 'rgba(160,160,160,0.28)',
   tabActiveBg: '#0d1117',
-  success: '#4ade80',
-  warning: '#fbbf24',
-  error: '#f87171',
+  success: '#1d8142',
+  warning: '#be8e13',
+  error: '#d25b5b',
   scrollbarThumb: '#4b5563',
   scrollbarThumbHover: '#6b7280',
 };

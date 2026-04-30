@@ -13,6 +13,8 @@ const getVar = (name: string) =>
 const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const lineHRef = useRef(1);
+  const virtualLinesRef = useRef(1);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -79,14 +81,26 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
       ctx.fillRect(0, 0, W, H);
 
       const lines = doc.lines;
-      let lineH = H / lines;
+
+      // 计算编辑器视口大约能容纳多少行，minimap 至少应显示一页内容
+      // 避免短文档时把少量行拉伸填充整个 minimap
+      const editorHeight = view.dom.getBoundingClientRect().height;
+      const realLineHeight = view.defaultLineHeight || 16;
+      const viewportLines = Math.max(1, Math.ceil(editorHeight / realLineHeight));
+      const virtualLines = Math.max(lines, viewportLines);
+
+      let lineH = H / virtualLines;
       let step = 1;
 
       // 对于超大文件，按块采样避免逐行循环过慢
       if (lineH < 0.5) {
         step = Math.ceil(0.5 / lineH);
-        lineH = H / (lines / step);
+        lineH = H / (virtualLines / step);
       }
+
+      // 保存供 scrollToY 使用
+      lineHRef.current = lineH;
+      virtualLinesRef.current = virtualLines;
 
       // 绘制代码缩略：每行/每块用一条灰线表示，长度和透明度随字符数变化
       ctx.fillStyle = getVar('--te-text-secondary');
@@ -140,11 +154,21 @@ const Minimap: React.FC<MinimapProps> = ({ viewRef, theme }) => {
 
       const rect = container.getBoundingClientRect();
       const y = clientY - rect.top;
-      const ratio = Math.max(0, Math.min(1, y / rect.height));
-      const targetLine = Math.floor(ratio * view.state.doc.lines) + 1;
-      const line = view.state.doc.line(
-        Math.min(targetLine, view.state.doc.lines)
-      );
+      const lines = view.state.doc.lines;
+      const lineH = lineHRef.current;
+      const contentHeight = lines * lineH;
+
+      let targetLine: number;
+      if (y >= contentHeight) {
+        // 点击空白区域，跳到文档末尾
+        targetLine = lines;
+      } else {
+        // 点击内容区域，按内容区域内的比例计算
+        const ratio = Math.max(0, Math.min(1, y / contentHeight));
+        targetLine = Math.floor(ratio * lines) + 1;
+      }
+
+      const line = view.state.doc.line(Math.min(targetLine, lines));
 
       view.dispatch({
         selection: { anchor: line.from },

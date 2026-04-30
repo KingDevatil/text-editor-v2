@@ -62,7 +62,7 @@
     ],
     "fileAssociations": [
       {
-        "ext": ["txt", "md", "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "html", "htm", "xhtml", "css", "scss", "sass", "less", "json", "jsonc", "json5", "py", "pyw", "java", "cpp", "cc", "cxx", "c", "h", "hpp", "cs", "rs", "go", "mdx", "yml", "yaml", "xml", "svg", "wsdl", "xsd", "xsl", "xslt", "sql", "mysql", "pgsql", "sqlite", "ini", "cfg", "inf", "csv", "tsv", "env", "properties", "log", "sh", "bash", "zsh", "bat", "cmd", "ps1", "toml", "vue", "svelte", "astro", "rb", "php", "swift", "kt", "scala", "r", "lua", "perl", "pl"],
+        "ext": ["txt", "md", "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "html", "htm", "xhtml", "css", "scss", "sass", "less", "json", "jsonc", "json5", "py", "pyw", "java", "cpp", "cc", "cxx", "c", "h", "hpp", "cs", "rs", "go", "mdx", "yml", "yaml", "xml", "svg", "wsdl", "xsd", "xsl", "xslt", "sql", "mysql", "pgsql", "sqlite", "ini", "cfg", "inf", "csv", "tsv", "env", "properties", "log", "toml", "vue", "svelte", "astro", "rb", "php", "swift", "kt", "scala", "r", "lua", "perl", "pl"],
         "name": "TextFile",
         "description": "Text Document",
         "role": "Editor"
