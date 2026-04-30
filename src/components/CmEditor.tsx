@@ -6,7 +6,7 @@ import { defaultKeymap, history, historyKeymap, undo, redo, selectAll, indentMor
 import { selectNextOccurrence, selectSelectionMatches } from '@codemirror/search';
 import { highlightSelectionMatches } from '@codemirror/search';
 import { closeBrackets, closeBracketsKeymap } from '@codemirror/autocomplete';
-import { foldGutter, foldKeymap, bracketMatching, indentOnInput } from '@codemirror/language';
+import { foldGutter, foldKeymap, bracketMatching, indentOnInput, indentService, IndentContext } from '@codemirror/language';
 import { unicodeHighlight as unicodeHighlightExt } from '../utils/unicodeHighlight';
 import { loadLanguageExtensions, getLanguageExtensionsSync } from '../utils/languageExtensions';
 import { buildDynamicTheme, syntaxHighlightExtension } from '../utils/themes';
@@ -130,6 +130,12 @@ function buildBaseExtensions(
     rectangularSelection(),
     crosshairCursor(),
     ctrlClickMultiCursor,
+    indentService.of((context: IndentContext, pos: number) => {
+      const line = context.state.doc.lineAt(pos);
+      const prevLine = context.state.doc.line(Math.max(1, line.number - 1));
+      const indent = prevLine.text.match(/^\s*/)?.[0] || '';
+      return indent.length || null;
+    }),
     keymap.of([...defaultKeymap, ...historyKeymap, ...closeBracketsKeymap]),
     keymap.of([
       { key: 'Tab', run: indentMore, shift: indentLess },
