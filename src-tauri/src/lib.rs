@@ -356,11 +356,6 @@ fn get_pending_files(state: tauri::State<AppState>) -> Vec<String> {
 #[tauri::command]
 fn reveal_in_folder(path: String) -> Result<(), String> {
     let path_obj = std::path::Path::new(&path);
-    let target = if path_obj.is_file() {
-        path_obj.parent().unwrap_or(path_obj)
-    } else {
-        path_obj
-    };
     
     #[cfg(target_os = "windows")]
     {
@@ -382,6 +377,11 @@ fn reveal_in_folder(path: String) -> Result<(), String> {
     
     #[cfg(target_os = "linux")]
     {
+        let target = if path_obj.is_file() {
+            path_obj.parent().unwrap_or(path_obj)
+        } else {
+            path_obj
+        };
         use std::process::Command;
         Command::new("xdg-open")
             .arg(target)
