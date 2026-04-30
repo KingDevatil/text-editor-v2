@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import ContextMenu, { type ContextMenuItem } from './ContextMenu';
 import { getEditorContent } from '../hooks/useEditorStatePool';
+import { useEditorStore } from '../hooks/useEditorStore';
 import type { ThemeMode } from '../types';
 import { generateHeadingSlugs, slugify } from '../utils/slugify';
 
@@ -33,7 +34,8 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
 }) => {
   const [content, setContent] = useState('');
   const [readerFontSize, setReaderFontSize] = useState(16);
-  const [tocVisible, setTocVisible] = useState(false);
+  const tocVisible = useEditorStore((s) => s.readerTocVisible);
+  const setReaderTocVisible = useEditorStore((s) => s.setReaderTocVisible);
   const [showScrollTop, setShowScrollTop] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; items: ContextMenuItem[] } | null>(null);
   const rafRef = useRef<number | null>(null);
@@ -83,7 +85,6 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
       const top = el.offsetTop - 24;
       scrollRef.current.scrollTo({ top, behavior: 'smooth' });
     }
-    setTocVisible(false);
   }, []);
 
   // Intercept in-document anchor clicks (e.g. `[text](#heading-id)`)
@@ -147,7 +148,7 @@ const MarkdownReader: React.FC<MarkdownReaderProps> = React.memo(({
         <div className="flex items-center gap-1">
           {/* TOC toggle */}
           <button
-            onClick={() => setTocVisible(!tocVisible)}
+            onClick={() => setReaderTocVisible(!tocVisible)}
             className={`flex items-center gap-1 px-2 py-1.5 text-sm rounded-lg transition-all hover:bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)] ${tocVisible ? 'bg-[color-mix(in_srgb,var(--te-text-primary)_10%,transparent)]' : ''}`}
             title="目录"
             style={{ color: textColor }}

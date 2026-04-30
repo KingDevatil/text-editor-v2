@@ -32,6 +32,7 @@ interface PersistedSettings {
   scrollPastEnd?: boolean;
   minimapVisible?: boolean;
   readMode?: boolean;
+  readerTocVisible?: boolean;
   customKeybindings?: Record<string, string>;
 }
 
@@ -68,6 +69,7 @@ function saveSettings(state: EditorState & EditorActions) {
       scrollPastEnd: state.scrollPastEnd,
       minimapVisible: state.minimapVisible,
       readMode: state.readMode,
+      readerTocVisible: state.readerTocVisible,
       customKeybindings: state.customKeybindings,
     };
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
@@ -93,6 +95,7 @@ interface EditorState {
   splitMode: boolean;
   projectPath: string | null;
   largeFileOptimize: boolean;
+  readerTocVisible: boolean;
 }
 
 interface EditorActions {
@@ -133,6 +136,7 @@ interface EditorActions {
   setScrollPastEnd: (scroll: boolean) => void;
   minimapVisible: boolean;
   setMinimapVisible: (visible: boolean) => void;
+  setReaderTocVisible: (visible: boolean) => void;
   diffMode: boolean;
   diffLeftTabId: string | null;
   diffRightTabId: string | null;
@@ -168,6 +172,7 @@ const useEditorStore = create<EditorState & EditorActions>((set) => ({
   showWhitespace: loaded.showWhitespace ?? false,
   scrollPastEnd: loaded.scrollPastEnd ?? true,
   minimapVisible: loaded.minimapVisible ?? true,
+  readerTocVisible: loaded.readerTocVisible ?? true,
   diffMode: false,
   diffLeftTabId: null,
   diffRightTabId: null,
@@ -456,6 +461,7 @@ const useEditorStore = create<EditorState & EditorActions>((set) => ({
   setShowWhitespace: (show) => set({ showWhitespace: show }),
   setScrollPastEnd: (scroll) => set({ scrollPastEnd: scroll }),
   setMinimapVisible: (visible) => set({ minimapVisible: visible }),
+  setReaderTocVisible: (visible) => set({ readerTocVisible: visible }),
   setDiffMode: (mode) => set({ diffMode: mode }),
   setDiffPair: (left, right) => set({ diffLeftTabId: left, diffRightTabId: right }),
   setReadMode: (mode) => set({ readMode: mode }),
