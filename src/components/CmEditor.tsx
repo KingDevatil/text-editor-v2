@@ -117,6 +117,7 @@ function buildBaseExtensions(
   enableScrollPastEnd: boolean,
   tabId: string,
   enableUnicodeHighlight: boolean,
+  isDark: boolean,
 ): Extension[] {
   const exts: Extension[] = [
     history(),
@@ -141,7 +142,7 @@ function buildBaseExtensions(
     highlightSelectionMatches(),
     syntaxHighlightExtension,
     languageCompartment.of(getLanguageExtensionsSync(lang)),
-    themeCompartment.of(buildDynamicTheme(colors)),
+    themeCompartment.of(buildDynamicTheme(colors, isDark)),
     fontSizeCompartment.of(
       EditorView.theme({ '.cm-content': { fontSize: `${fontSize}px` } })
     ),
@@ -228,7 +229,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
       state = EditorState.create({
         doc: initialContent,
         extensions: [
-          ...buildBaseExtensions(language, resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors), fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId, enableUnicodeHighlight),
+          ...buildBaseExtensions(language, resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors), fontSize, readOnly, largeFileOptimize, wordWrap, showWhitespace, enableScrollPastEnd, tabId, enableUnicodeHighlight, theme !== 'light'),
           EditorView.updateListener.of((update) => {
             // Always save state to pool so that effects (language/theme changes)
             // are persisted, not just doc changes.
@@ -356,7 +357,7 @@ const CmEditor: React.FC<CmEditorProps> = ({
     if (!view) return;
     const colors = resolveThemeColors(theme, lightCustomColors, darkCustomColors, customColors);
     view.dispatch({
-      effects: themeCompartment.reconfigure(buildDynamicTheme(colors)),
+      effects: themeCompartment.reconfigure(buildDynamicTheme(colors, theme !== 'light')),
     });
     setEditorState(tabId, view.state);
   }, [theme, lightCustomColors, darkCustomColors, customColors, tabId]);

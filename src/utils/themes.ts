@@ -25,7 +25,7 @@ export const syntaxHighlightExtension: Extension = syntaxHighlighting(classHighl
 /**
  * Build a dynamic CodeMirror 6 theme from ThemeColors.
  */
-export function buildDynamicTheme(colors: ThemeColors): Extension {
+export function buildDynamicTheme(colors: ThemeColors, isDark: boolean = false): Extension {
   return EditorView.theme(
     {
       '&': {
@@ -74,7 +74,7 @@ export function buildDynamicTheme(colors: ThemeColors): Extension {
       '.cm-log-info': { color: colors.primary, fontWeight: 'bold' },
       '.cm-log-debug': { color: colors.textSecondary },
     },
-    { dark: false }
+    { dark: isDark }
   );
 }
 

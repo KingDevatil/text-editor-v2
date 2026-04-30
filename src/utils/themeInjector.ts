@@ -1,5 +1,5 @@
 import type { ThemeColors } from '../types';
-import { defaultDarkColors } from './themeDefaults';
+import { defaultLightColors, defaultDarkColors } from './themeDefaults';
 
 function deriveFocusedSelection(selection: string): string {
   const rgba = selection.match(/rgba\((\d+),\s*(\d+),\s*(\d+),\s*([\d.]+)\)/);
@@ -41,11 +41,29 @@ export function injectThemeVars(colors: ThemeColors): void {
     --te-tab-active-bg: ${colors.tabActiveBg};
     --te-scrollbar-thumb: ${colors.scrollbarThumb};
     --te-scrollbar-thumb-hover: ${colors.scrollbarThumbHover};
+  }
+  .cm-editor .cm-content {
+    caret-color: ${colors.editorCursor} !important;
+  }
+  .cm-editor .cm-cursor {
+    border-left-color: ${colors.editorCursor} !important;
   }`;
 }
 
-// Pre-inject default dark colors on module load so CSS variables exist
+// Pre-inject saved theme colors on module load so CSS variables exist
 // before CmEditor initializes (App.tsx useEffect runs after child mount)
 if (typeof document !== 'undefined') {
-  injectThemeVars(defaultDarkColors);
+  try {
+    const saved = JSON.parse(localStorage.getItem('te2-settings') || '{}');
+    const theme = saved.theme || 'dark';
+    if (theme === 'light') {
+      injectThemeVars({ ...defaultLightColors, ...saved.lightCustomColors });
+    } else if (theme === 'custom') {
+      injectThemeVars({ ...defaultLightColors, ...saved.customColors });
+    } else {
+      injectThemeVars({ ...defaultDarkColors, ...saved.darkCustomColors });
+    }
+  } catch {
+    injectThemeVars(defaultDarkColors);
+  }
 }

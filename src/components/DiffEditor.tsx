@@ -40,7 +40,7 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ leftContent, rightContent, them
       keymap.of(historyKeymap),
       lineNumbers(),
       syntaxHighlightExtension,
-      buildDynamicTheme(colors),
+      buildDynamicTheme(colors, theme !== 'light'),
       EditorView.editable.of(false),
     ];
 
