@@ -2,7 +2,7 @@
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "Text Editor",
   "version": "1.0.0",
-  "identifier": "com.texteditor.app",
+  "identifier": "com.texteditor.texteditor",
   "build": {
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build",
@@ -65,7 +65,8 @@
         "ext": ["txt", "md", "js", "jsx", "mjs", "cjs", "ts", "tsx", "mts", "cts", "html", "htm", "xhtml", "css", "scss", "sass", "less", "json", "jsonc", "json5", "py", "pyw", "java", "cpp", "cc", "cxx", "c", "h", "hpp", "cs", "rs", "go", "mdx", "yml", "yaml", "xml", "svg", "wsdl", "xsd", "xsl", "xslt", "sql", "mysql", "pgsql", "sqlite", "ini", "cfg", "inf", "csv", "tsv", "env", "properties", "log", "toml", "vue", "svelte", "astro", "rb", "php", "swift", "kt", "scala", "r", "lua", "perl", "pl"],
         "name": "TextFile",
         "description": "Text Document",
-        "role": "Editor"
+        "role": "Editor",
+        "mimeType": "text/plain"
       }
     ],
     "macOS": {
