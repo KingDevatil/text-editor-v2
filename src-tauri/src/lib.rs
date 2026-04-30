@@ -555,6 +555,7 @@ pub fn run() {
             {
                 let window = app.get_webview_window("main").unwrap();
                 let _ = window.set_title("Text Editor");
+                let _ = window.show();
             }
             // Warm up encoding detection libraries (avoid cold-start on first file open)
             let _ = smart_detect_encoding(b"warmup");
